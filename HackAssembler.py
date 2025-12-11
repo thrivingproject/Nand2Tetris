@@ -6,18 +6,17 @@ Bugs: No error checking, reporting, or handling.
 
 import sys
 from os import path
-
 from parser import Parser
 import coder
 
 asm_path = sys.argv[1]
 path_root, ext = path.splitext(asm_path)
+# Needed to prevent non-asm files from being parsed
 if ext != ".asm":
     raise ValueError("Input file must have .asm extension")
 
-parser = Parser(asm_path)
-
 with open(path_root + ".hack", "w", encoding="utf-8") as f:
+    parser = Parser(asm_path)
     while parser.has_more_lines():
         parser.advance()
         line = ""
