@@ -12,5 +12,4 @@ py HackAssembler.py [path/to/]Prog.asm
 
 ## Bugs
 
-- No error checking, reporting, or handling.
-- Does not handle symbolic references
+- Incomplete error checking, reporting and handling.

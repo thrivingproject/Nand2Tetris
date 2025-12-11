@@ -1,5 +1,8 @@
 class SymbolTable:
+    """Associates symbolic labels to numeric addresses"""
+
     def __init__(self) -> None:
+        """Initializes symbol table with predefined symbols"""
         self._dict = {
             "R0": 0,
             "R1": 1,
@@ -27,10 +30,13 @@ class SymbolTable:
         }
 
     def add_entry(self, symbol: str, address: int) -> None:
+        """Add the pair (symbol, address) to the symbol table"""
         self._dict[symbol] = address
 
     def contains(self, symbol: str) -> bool:
+        """Check if the symbol table contains the given symbol"""
         return symbol in self._dict
 
     def get_address(self, symbol: str) -> int:
+        """Get the address that a symbol corresponds to"""
         return self._dict[symbol]
