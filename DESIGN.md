@@ -12,8 +12,8 @@ Parses the input into instructions and instructions into fields
 
 ### [Assembler](./HackAssembler.py)
 
-Drives entire translation process (#TODO)
+Drives entire translation process
 
 ### [Coder](./coder.py)
 
-Translates the fields into binary codes (#TODO)
+Translates the fields into binary codes

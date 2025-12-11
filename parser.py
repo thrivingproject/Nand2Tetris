@@ -45,31 +45,30 @@ class Parser:
         else:
             return self.InstructionType.C_INSTRUCTION
 
-    def symbol(self) -> str: ...
-
-    def _get_eq_index(self):
-        """Returns the index of the '=' sign in the current C-Instruction, or 0 if none.
-
-        0 is used instead of `str.find()`'s -1 for indexing.
-        """
-        try:
-            eq_sign = self._current_instruction.index("=")
-        except ValueError:
-            eq_sign = 0
-        return eq_sign
+    def symbol(self) -> str:
+        """Returns symbol for L-Instructions and A-Instructions"""
+        return self._current_instruction[1:]
 
     def dest(self) -> str:
         """Returns the symbolic _dest_ part of the current C-Instruction"""
-        return self._current_instruction[: self._get_eq_index()]
+        eq_sign = self._current_instruction.find("=")
+        # Need to end at 0 so we get empty string if = not found
+        end = 0 if eq_sign == -1 else eq_sign
+        return self._current_instruction[:end]
 
     def comp(self) -> str:
         """Returns the symbolic _comp_ part of the current C-Instruction"""
+        jump_sep = self._current_instruction.find(";")
+        # Needed since -1 doesn't include last character and None does
+        end = None if jump_sep == -1 else jump_sep
         return self._current_instruction[
-            self._get_eq_index() : self._current_instruction.find(";")
+            # Add 1 to start at 0 if no '=' and to skip '=' if found
+            (self._current_instruction.find("=") + 1) : end
         ]
 
     def jump(self) -> str:
         """Returns the symbolic _jump_ part of the current C-Instruction"""
-        return self._current_instruction[
-            self._current_instruction.find(";") + 1 :
-        ]
+        jump_sep = self._current_instruction.find(";")
+        if jump_sep == -1:
+            return ""
+        return self._current_instruction[jump_sep + 1 :]
