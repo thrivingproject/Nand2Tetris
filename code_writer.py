@@ -62,7 +62,7 @@ class CodeWriter:
         """
         lines = [f"// {command}", *_POP_TO_D]
         match command:
-            case "add" | "sub" | "eq" | "gt" | "lt" | "and" | "or":
+            case "add" | "sub" | "and" | "or" | "eq" | "gt" | "lt":
                 lines += [
                     "@R14",
                     "M=D",
