@@ -22,6 +22,34 @@ class CodeWriter:
         self._f = open(f"{root}.asm", "w")
         self._label_d: dict[str, int] = {}
 
+    def set_file_name(self, fname: str) -> None:
+        """Inform that the translation of a new VM file has started."""
+        ...
+
+    def write_label(self, label: str) -> None:
+        """Write assembly code that implements the label command."""
+        ...
+
+    def write_goto(self, label: str) -> None:
+        """Write assembly code that implements the goto command."""
+        ...
+
+    def write_if(self, label: str) -> None:
+        """Write assembly code that implements the if-goto command."""
+        ...
+
+    def write_function(self, fn_name: str, n_vars: int) -> None:
+        """Write assembly code that implements the function command."""
+        ...
+
+    def write_call(self, fn_name: str, n_vars: int) -> None:
+        """Write assembly code that implements the call command."""
+        ...
+
+    def write_return(self) -> None:
+        """Write assembly code that implements the return command."""
+        ...
+
     def write_arithmetic(self, command: str) -> None:
         """Write to the output file the assembly code that implements the given arithmetic-logical command.
 
