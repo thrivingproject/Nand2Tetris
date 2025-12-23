@@ -2,6 +2,10 @@
 
 Translates VM commands into machine language. Conforms to the Nand2Tetris VM Specification and the standard mapping on the Hack platform. Assumes the source VM code is error-free.
 
+## Design
+
+[VMTranslator.py](VMTranslator.py) drives translation from source VM code to assembly. [parser.py](parser.py) handles parsing of VM commands. [code_writer.py](code_writer.py) translates VM commands into Hack assembly code.
+
 ## Usage
 
 ```shell
