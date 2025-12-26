@@ -131,7 +131,7 @@ class CodeWriter:
                 "D=D+A",
                 f"@R13",
                 "M=D",
-                [*_POP_TO_D],
+                *_POP_TO_D,
                 "@R13",
                 "A=M",
             ]
