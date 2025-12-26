@@ -24,17 +24,16 @@ sym_table = SymbolTable()
 line_no = -1
 while parser.has_more_lines():
     parser.advance()
-    instruction_type = parser.instructionType()
-    # Needed so we only add to line no for C and A instructions
-    if instruction_type is not Parser.InstructionType.L_INSTRUCTION:
-        line_no += 1
-    else:
+    if parser.instructionType() is Parser.InstructionType.L_INSTRUCTION:
         label_symbol = parser.symbol()
         if sym_table.contains(label_symbol):
             raise ValueError(f"Symbol {label_symbol} defined multiple times")
         else:
             # Add 1 to get ROM address of next instruction
             sym_table.add_entry(label_symbol, line_no + 1)
+    else:
+        # Needed so we only add to line no for C and A instructions
+        line_no += 1
 
 
 # Second pass needed to handle variable symbols and generate binary
