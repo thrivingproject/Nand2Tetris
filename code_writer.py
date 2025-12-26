@@ -3,9 +3,14 @@ from command_type import CommandType
 from os import path
 
 _POP_TO_D = ("@SP", "AM=M-1", "D=M")
-_INCREMENT_SP = ("@SP", "M=M+1")
 _VM_TRUE = -1
 _VM_FALSE = 0
+_SEGMENT_LABEL_MAP = {
+    "local": "LCL",
+    "argument": "ARG",
+    "this": "THIS",
+    "that": "THAT",
+}
 
 
 class CodeWriter:
@@ -65,7 +70,8 @@ class CodeWriter:
             case "neg" | "not":
                 lines += [
                     f"M={'-' if command == 'neg' else '!'}D",
-                    *_INCREMENT_SP,
+                    "@SP",
+                    "M=M+1",
                 ]
             case "add" | "sub" | "and" | "or" | "eq" | "gt" | "lt":
                 lines.append("A=A-1")  # Get second arg
@@ -103,55 +109,80 @@ class CodeWriter:
         segment: str,
         index: int,
     ) -> None:
-        """Write to the output file the assembly code that implements the push/pop command.
+        """Write to the output file the assembly code that implements the push/pop command."""
+        if command == CommandType.C_PUSH:
+            lines = self._write_push(segment, index)
+        else:
+            lines = self._write_pop(segment, index)
+        self._add_newline_and_writelines(lines)
 
-        `push` pushes the value of segment[index] onto the stack.
-        `pop` pops the top stack value and stores it in segment[index].
+    def _write_pop(self, segment, index):
+        """Write to the output file the assembly code that implements the pop command.
+
+        `pop segment index` pops the top stack value and stores it in segment[index].
 
         Args:
-            command: The command type, either C_PUSH or C_POP.
             segment: argument, local, static, constant, this, that, pointer, or temp
             index: The index within the segment.
         """
-        base, ptr = self._get_symbols(segment, index)
-        match command:
-            case CommandType.C_PUSH:
-                lines = [f"// Push {segment} {index}"]
-                if segment in ("local", "argument", "this", "that"):
-                    lines += [f"@{base}", "D=M", f"@{index}", "A=D+A"]
-                else:
-                    lines += [f"@{ptr}"]
-                lines += [
-                    f"D={'A' if segment == 'constant' else 'M'}",
-                    "@SP",
-                    "A=M",
-                    "M=D",
-                    *_INCREMENT_SP,
-                ]
-            case CommandType.C_POP:
-                if segment == "constant":
-                    raise ValueError("Cannot pop to constant segment")
-                lines = [f"// Pop {segment} {index}"]
-                # Calculate address and save it to move top of stack to later
-                if segment in ("local", "argument", "this", "that"):
-                    lines += [
-                        f"@{base}",
-                        "D=M",
-                        f"@{index}",
-                        "D=D+A",
-                        f"@{ptr}",
-                        "M=D",
-                    ]
-                # Pop top of stack to D so we can write D to the address
-                lines += [*_POP_TO_D]
-                # Get the address so we can write D to it
-                lines.append(f"@{ptr}")
-                if segment in ("local", "argument", "this", "that"):
-                    lines.append("A=M")
-                lines.append("M=D")
-            case _:
-                raise ValueError(f"Bad write_push_pop command: {command}")
-        self._add_newline_and_writelines(lines)
+        if segment == "constant":
+            raise ValueError("Cannot pop to constant segment")
+        lines = [f"// Pop {segment} {index}"]
+        if segment in ("local", "argument", "this", "that"):
+            lines += [
+                f"@{_SEGMENT_LABEL_MAP[segment]}",
+                "D=M",
+                f"@{index}",
+                "D=D+A",
+                f"@R13",
+                "M=D",
+                [*_POP_TO_D],
+                "@R13",
+                "A=M",
+            ]
+        else:
+            lines += [*_POP_TO_D]
+            # Append assemble line to select memory register
+            if segment == "temp":
+                lines.append(f"@R{5 + index}")
+            elif segment == "pointer":
+                lines.append("@THIS" if index == 0 else "@THAT")
+            elif segment == "static":
+                lines.append(f"@{self._fname}.{index}")
+        lines.append("M=D")
+        return lines
+
+    def _write_push(self, segment, index):
+        """Write to the output file the assembly code that implements the push command.
+
+        `push segment index` pushes the value of segment[index] onto the stack.
+
+        Args:
+            segment: argument, local, static, constant, this, that, pointer, or temp
+            index: The index within the segment.
+        """
+        lines = [f"// Push {segment} {index}"]
+        # Select memory register / store constant value in A register
+        if segment in ("local", "argument", "this", "that"):
+            lines += [
+                f"@{_SEGMENT_LABEL_MAP[segment]}",
+                "D=M",
+                f"@{index}",
+                "A=D+A",
+            ]
+        elif segment == "temp":
+            lines.append(f"@R{5 + index}")
+        elif segment == "pointer":
+            lines.append("@THIS" if index == 0 else "@THAT")
+        elif segment == "static":
+            lines.append(f"@{self._fname}.{index}")
+        else:
+            lines.append(f"@{index}")
+        # Store value in memory register / constant in D register
+        lines.append(f"D={'A' if segment == 'constant' else 'M'}")
+        # Push D to stack top
+        lines += ["@SP", "AM=M+1", "A=A-1", "M=D"]
+        return lines
 
     def close(self) -> None:
         """Close the output file."""
@@ -161,36 +192,3 @@ class CodeWriter:
         """Add newline character to end of each line and write lines to file."""
         lines = [line + "\n" for line in lines]
         self._out.writelines(lines)
-
-    def _get_symbols(self, segment: str, index: int) -> tuple[str, str]:
-        """Return the symbols for pointers to virtual registers.
-
-        Args:
-            segment: virtual memory segment
-            index: The index within the segment.
-
-        Returns:
-            (base, ptr): tuple containing symbol for pointer to first address of the virtual memory segment,
-            and symbol for pointer to the address corresponding to segment[index].
-        """
-        match segment:
-            case "local" | "argument" | "this" | "that":
-                if segment == "local":
-                    base = "LCL"
-                elif segment == "this":
-                    base = "THIS"
-                elif segment == "that":
-                    base = "THAT"
-                else:
-                    base = "ARG"
-                return base, "R13"
-            case "static":
-                return "", f"{self._fname}.{index}"
-            case "constant":
-                return "", f"{index}"
-            case "temp":
-                return "", f"R{5 + index}"
-            case "pointer":
-                return "", "THIS" if index == 0 else "THAT"
-            case _:
-                raise ValueError(f"Bad segment: {segment}")
