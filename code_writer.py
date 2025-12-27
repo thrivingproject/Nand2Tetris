@@ -32,14 +32,14 @@ class CodeWriter:
         self._fname = path.basename(root)
         self._out = open(f"{root}.asm", "w")
         self._label_d: dict[str, int] = {}
-        self._add_newline_and_writelines(["@START", "0;JMP"])
+        self._writelines(["@START", "0;JMP"])
         self._write_reusable_comparisons()
-        self._add_newline_and_writelines(["(START)"])
+        self._writelines(["(START)"])
 
-    def _add_newline_and_writelines(self, lines: list[str]):
+    def _writelines(self, lines: list[str]):
         """Add newline character to end of each line and write lines to file."""
-        lines = [line + "\n" for line in lines]
-        self._out.writelines(lines)
+        for line in lines:
+            self._out.write(line + "\n")
 
     def _write_pop(self, segment, index):
         """Write to the output file the assembly code that implements the pop command.
@@ -138,7 +138,7 @@ class CodeWriter:
                 "A=M",
                 "0;JMP",
             ]
-            self._add_newline_and_writelines(lines)
+            self._writelines(lines)
 
     def _write_comparison_command(self, command: str):
         """Write assembly code to effect comparison commands.
@@ -210,7 +210,7 @@ class CodeWriter:
             else:
                 lines.append("M=-D" if command == "neg" else "M=!D")
                 lines += ["@SP", "M=M+1"]
-        self._add_newline_and_writelines(lines)
+        self._writelines(lines)
 
     def write_push_pop(
         self,
@@ -223,7 +223,7 @@ class CodeWriter:
             lines = self._write_push(segment, index)
         else:
             lines = self._write_pop(segment, index)
-        self._add_newline_and_writelines(lines)
+        self._writelines(lines)
 
     def close(self) -> None:
         """Close the output file."""
