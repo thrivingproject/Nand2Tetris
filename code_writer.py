@@ -202,15 +202,21 @@ class CodeWriter:
 
     def write_goto(self, label: str) -> None:
         """Write assembly code that implements the goto command."""
-        ...
+        self._writelines([f"// goto {label}", f"@{label}", "0;JMP"])
 
     def write_if(self, label: str) -> None:
         """Write assembly code that implements the if-goto command."""
-        ...
+        lines = [
+            f"// if-goto {label}",
+            *_POP_TOP_OF_STACK_TO_D,
+            f"@{label}",
+            "D;JNE",
+        ]
+        self._writelines(lines)
 
     def write_label(self, label: str) -> None:
         """Write assembly code that implements the label command."""
-        ...
+        self._writelines([f"// label {label}", f"({label})"])
 
     def write_push_pop(
         self,
