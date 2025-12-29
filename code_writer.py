@@ -2,10 +2,10 @@ from typing import Literal
 from command_type import CommandType
 from os import path
 
-_POP_TO_D = ("@SP", "AM=M-1", "D=M")
+_POP_TOP_OF_STACK_TO_D = ("@SP", "AM=M-1", "D=M")
 _VM_TRUE = -1
 _VM_FALSE = 0
-_SEGMENT_LABEL_MAP = {
+_VIRTUAL_SEGMENT_POINTER = {
     "local": "LCL",
     "argument": "ARG",
     "this": "THIS",
@@ -41,71 +41,70 @@ class CodeWriter:
         for line in lines:
             self._out.write(line + "\n")
 
-    def _get_pop_asm(self, segment, index):
-        """Write to the output file the assembly code that implements the pop command.
-
-        `pop segment index` pops the top stack value and stores it in segment[index].
+    def _get_pop_asm(self, segment: str, index, pointer_to_base: None | str):
+        """`pop segment index` pops the top stack value and stores it
+        in segment[index].
 
         Args:
-            segment: argument, local, static, constant, this, that, pointer, or temp
+            segment: argument, local, static, constant, this, that, pointer, or temp.
             index: The index within the segment.
+            pointer: Pointer to virtual segment base address.
         """
-        if segment == "constant":
-            raise ValueError("Cannot pop to constant segment")
         lines = [f"// Pop {segment} {index}"]
-        if segment in ("local", "argument", "this", "that"):
+
+        # Pop top of stack to D and select memory address to store it in
+        if pointer_to_base:
             lines += [
-                f"@{_SEGMENT_LABEL_MAP[segment]}",
+                f"@{pointer_to_base}",
                 "D=M",
                 f"@{index}",
-                "D=D+A",
+                "D=D+A",  # Calculate address of i-th entry of virtual segment
                 f"@R13",
-                "M=D",
-                *_POP_TO_D,
+                "M=D",  # Save address to R13 since D register needed later
+                *_POP_TOP_OF_STACK_TO_D,
                 "@R13",
                 "A=M",
             ]
         else:
-            lines += [*_POP_TO_D]
-            # Append assembly line to select memory register
+            lines += [*_POP_TOP_OF_STACK_TO_D]
             if segment == "temp":
                 lines.append(f"@R{5 + index}")
             elif segment == "pointer":
                 lines.append("@THIS" if index == 0 else "@THAT")
             elif segment == "static":
                 lines.append(f"@{self._fname}.{index}")
+
+        # Store the value of register D in selected RAM register
         lines.append("M=D")
         return lines
 
-    def _get_push_asm(self, segment, index):
-        """Write to the output file the assembly code that implements the push command.
-
-        `push segment index` pushes the value of segment[index] onto the stack.
+    def _get_push_asm(self, segment: str, index, pointer_to_base: None | str):
+        """`push segment index` pushes the value of segment[index]
+        onto the top of the stack.
 
         Args:
             segment: argument, local, static, constant, this, that, pointer, or temp
             index: The index within the segment.
+            pointer: Pointer to virtual segment base address.
         """
         lines = [f"// Push {segment} {index}"]
-        # Select memory register / store constant value in A register
-        if segment in ("local", "argument", "this", "that"):
-            lines += [
-                f"@{_SEGMENT_LABEL_MAP[segment]}",
-                "D=M",
-                f"@{index}",
-                "A=D+A",
-            ]
-        elif segment == "temp":
-            lines.append(f"@R{5 + index}")
-        elif segment == "pointer":
-            lines.append("@THIS" if index == 0 else "@THAT")
-        elif segment == "static":
-            lines.append(f"@{self._fname}.{index}")
+
+        if segment == "constant":
+            lines += [f"@{index}", "D=A"]
         else:
-            lines.append(f"@{index}")
-        # Store value in memory register / constant in D register
-        lines.append(f"D={'A' if segment == 'constant' else 'M'}")
-        # Push D to stack top
+            # Select RAM register represented by virtual memory segment entry
+            if segment == "temp":
+                lines.append(f"@R{5 + index}")
+            elif segment == "pointer":
+                lines.append("@THIS" if index == 0 else "@THAT")
+            elif segment == "static":
+                lines.append(f"@{self._fname}.{index}")
+            else:  # Local, argument, this, and that
+                lines += [f"@{pointer_to_base}", "D=M", f"@{index}", "A=D+A"]
+            # Set D register to selected RAM register's value
+            lines.append("D=M")
+
+        # Push D to top of stack
         lines += ["@SP", "AM=M+1", "A=A-1", "M=D"]
         return lines
 
@@ -122,7 +121,7 @@ class CodeWriter:
                 # Save return address
                 "@R14",
                 "M=D",
-                *_POP_TO_D,
+                *_POP_TOP_OF_STACK_TO_D,
                 # Calculate and push to stack
                 "A=A-1",
                 "D=M-D",
@@ -203,7 +202,7 @@ class CodeWriter:
         if command in ("gt", "lt", "eq"):
             lines += self._write_comparison_command(command)
         else:
-            lines += [*_POP_TO_D]
+            lines += [*_POP_TOP_OF_STACK_TO_D]
             if command in ("add", "sub", "and", "or"):
                 lines.append("A=A-1")  # Needed to access second operand
                 lines.append(_ARITHMETIC_ASM_MAP[command])
@@ -219,10 +218,11 @@ class CodeWriter:
         index: int,
     ) -> None:
         """Write to the output file the assembly code that implements the push/pop command."""
+        pointer = _VIRTUAL_SEGMENT_POINTER.get(segment)
         if command == CommandType.C_PUSH:
-            lines = self._get_push_asm(segment, index)
+            lines = self._get_push_asm(segment, index, pointer)
         else:
-            lines = self._get_pop_asm(segment, index)
+            lines = self._get_pop_asm(segment, index, pointer)
         self._writelines(lines)
 
     def close(self) -> None:
