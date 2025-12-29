@@ -24,8 +24,10 @@ class Parser:
         Should only be called if `has_more_lines` is `True`. Initially there is no current command.
         """
         self._line_ndx += 1
-        cur_line = self._lines[self._line_ndx]
-        if cur_line.startswith(("//", "\n")) and self.has_more_lines():
+        cur_line = self._lines[self._line_ndx].strip()
+        if (
+            not cur_line or cur_line.startswith(("//", "\n"))
+        ) and self.has_more_lines():
             self.advance()
 
     def command_type(self) -> CommandType:
