@@ -2,7 +2,7 @@ from command_type import CommandType
 
 
 class Parser:
-    """Parses Hack VM commands."""
+    """Parses Hack VM commands from a single VM file."""
 
     def __init__(self, fpath) -> None:
         """Open the input file and prepare to parse it.

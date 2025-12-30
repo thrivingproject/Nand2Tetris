@@ -1,6 +1,6 @@
+from pathlib import Path
 from typing import Literal
 from command_type import CommandType
-from os import path
 
 _POP_TOP_OF_STACK_TO_D = ("@SP", "AM=M-1", "D=M")
 """Pops top of stack to D, decrements SP; destroys A register"""
@@ -25,19 +25,23 @@ _UPDATE_FRAME_POINTER = "@R13", "AM=M-1", "D=M"
 class CodeWriter:
     """Maps VM commands to Hack machine language."""
 
-    def __init__(self, fpath: str) -> None:
+    def __init__(self, fpath: Path) -> None:
         """Open output file and gets read to write into it.
 
         Args:
             fpath: path to VM file
         """
-        root, _ = path.splitext(fpath)
-        self._fname = path.basename(root)
-        self._out = open(f"{root}.asm", "w")
+        self._fpath_stem = fpath.stem
+        self._vm_fname = ""
+        parent = fpath.parent if fpath.is_file() else fpath
+        self._out = open(f"{parent}/{fpath.stem}.asm", "w")
         self._label_d: dict[str, int] = {}
-        self._writelines(["@START", "0;JMP"])
-        self._write_reusable_comparisons()
-        self._writelines(["(START)"])
+        self._bootstrap()
+
+    def _bootstrap(self):
+        lines = ["@SP", "M=256", "@Sys.init", "0;JMP"]
+        lines += self._get_reusable_comparisons()
+        self._writelines(lines)
 
     def _writelines(self, lines: list[str]):
         """Add newline character to end of each line and write lines to file."""
@@ -75,7 +79,7 @@ class CodeWriter:
             elif segment == "pointer":
                 lines.append("@THIS" if index == 0 else "@THAT")
             elif segment == "static":
-                lines.append(f"@{self._fname}.{index}")
+                lines.append(f"@{self._fpath_stem}.{index}")
 
         # Store the value of register D in selected RAM register
         lines.append("M=D")
@@ -100,7 +104,7 @@ class CodeWriter:
             elif segment == "pointer":
                 lines.append("@THIS" if index == 0 else "@THAT")
             elif segment == "static":
-                lines.append(f"@{self._fname}.{index}")
+                lines.append(f"@{self._fpath_stem}.{index}")
             else:  # Local, argument, this, and that
                 lines += [f"@{pointer_to_base}", "D=M", f"@{index}", "A=D+A"]
             # Set D register to selected RAM register's value
@@ -110,15 +114,16 @@ class CodeWriter:
         lines += ["@SP", "AM=M+1", "A=A-1", "M=D"]
         return lines
 
-    def _write_reusable_comparisons(self):
-        """Write assembly for eq, lt, gt operations.
+    def _get_reusable_comparisons(self):
+        """Return assembly for eq, lt, gt operations.
 
         This allows the code to be reusable such that each time the operation
         is needs performed, all that the "caller" needs to do is create a
         label symbol with return address, save it to D register, and jump here.
         """
+        lines: list[str] = []
         for operator in ("EQ", "LT", "GT"):
-            lines = [
+            lines += [
                 f"({operator}_START)",
                 # Save return address
                 "@R14",
@@ -139,7 +144,7 @@ class CodeWriter:
                 "A=M",
                 "0;JMP",
             ]
-            self._writelines(lines)
+        return lines
 
     def _write_comparison_command(self, command: str):
         """Write assembly code to effect comparison commands.
@@ -168,7 +173,7 @@ class CodeWriter:
 
     def set_file_name(self, fname: str) -> None:
         """Inform that the translation of a new VM file has started."""
-        ...
+        self._vm_fname = fname
 
     def write_arithmetic(self, command: str) -> None:
         """Write to the output file the assembly code that implements
