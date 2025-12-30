@@ -3,6 +3,7 @@ from command_type import CommandType
 from os import path
 
 _POP_TOP_OF_STACK_TO_D = ("@SP", "AM=M-1", "D=M")
+"""Pops top of stack to D, decrements SP; destroys A register"""
 _VM_TRUE = -1
 _VM_FALSE = 0
 _VIRTUAL_SEGMENT_POINTER = {
@@ -79,8 +80,7 @@ class CodeWriter:
         return lines
 
     def _get_push_asm(self, segment: str, index, pointer_to_base: None | str):
-        """`push segment index` pushes the value of segment[index]
-        onto the top of the stack.
+        """`push segment index` pushes the value stored in a virtual register onto the stack.
 
         Args:
             segment: argument, local, static, constant, this, that, pointer, or temp
@@ -193,7 +193,10 @@ class CodeWriter:
         self._writelines(lines)
 
     def write_call(self, fn_name: str, n_vars: int) -> None:
-        """Write assembly code that implements the call command."""
+        """Write assembly code that implements the call command.
+
+        `call fn_name n_args` calls the named function. The command informs that n_vars arguments have pushed onto the stack before the call.
+        """
         ...
 
     def write_function(self, fn_name: str, n_vars: int) -> None:
@@ -205,12 +208,15 @@ class CodeWriter:
         self._writelines([f"// goto {label}", f"@{label}", "0;JMP"])
 
     def write_if(self, label: str) -> None:
-        """Write assembly code that implements the if-goto command."""
+        """Write assembly code that implements the if-goto command.
+
+        The stack's topmost value is popped; if the value is not zero (false), i.e., if the value is true, execution continues from the location marked by the label; otherwise, execution continues from the next command in the program.
+        """
         lines = [
             f"// if-goto {label}",
             *_POP_TOP_OF_STACK_TO_D,
             f"@{label}",
-            "D;JNE",
+            "D;JNE",  # Jump if D is not 0 (is not false)
         ]
         self._writelines(lines)
 
