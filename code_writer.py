@@ -18,6 +18,8 @@ _ARITHMETIC_ASM_MAP = {
     "and": "M=D&M",
     "or": "M=D|M",
 }
+_UPDATE_FRAME_POINTER = "@R13", "AM=M-1", "D=M"
+"""Decrements frame pointer, goes to register, stores value in D"""
 
 
 class CodeWriter:
@@ -197,11 +199,23 @@ class CodeWriter:
 
         `call fn_name n_args` calls the named function. The command informs that n_vars arguments have pushed onto the stack before the call.
         """
-        ...
+        lines = [f"// call {fn_name} {n_vars}"]
+        self._writelines(lines)
 
     def write_function(self, fn_name: str, n_vars: int) -> None:
-        """Write assembly code that implements the function command."""
-        ...
+        """Write assembly code that implements the function command.
+
+        `function fn_name n_vars` marks the beginning of a function named fn_name. The command informs that the function has n_vars local variables.
+        """
+        lines = [f"// function {fn_name} {n_vars}", f"({fn_name})"]
+        # Push 0 to stack for each local variable
+        if n_vars:
+            lines += ["@SP", "A=M", "M=0"]
+            lines += ("A=A+1", "M=0") * (n_vars - 1)
+            lines.append("@SP")
+            lines += ("M=M+1",) * n_vars
+
+        self._writelines(lines)
 
     def write_goto(self, label: str) -> None:
         """Write assembly code that implements the goto command."""
@@ -239,5 +253,40 @@ class CodeWriter:
         self._writelines(lines)
 
     def write_return(self) -> None:
-        """Write assembly code that implements the return command."""
-        ...
+        """Write assembly code that implements the return command.
+
+        `return` transfers execution to the command just following the call command in the code of the function that called the current function.
+        """
+        lines = [
+            f"// return",
+            "@LCL",
+            "D=M-1",
+            "@R13",  # Pointer to last register of stack frame
+            "M=D",  # Store address of stack frame in R13
+            *_POP_TOP_OF_STACK_TO_D,
+            "@ARG",
+            "A=M",
+            "M=D",  # Put callee's return value on top of caller's stack
+            "@ARG",
+            "D=M+1",
+            "@SP",
+            "M=D",  # Reposition SP for the caller
+            "@R13",
+            "A=M",  # Select last register of stack frame
+            "D=M",
+            "@THAT",
+            "M=D",  # Restore THAT for caller
+            *_UPDATE_FRAME_POINTER,
+            "@THIS",
+            "M=D",  # Restore THIS for caller
+            *_UPDATE_FRAME_POINTER,
+            "@ARG",
+            "M=D",  # Restore ARG for caller
+            *_UPDATE_FRAME_POINTER,
+            "@LCL",
+            "M=D",  # Restore LCL for caller
+            "@R13",
+            "A=M-1",
+            "0;JMP",  # go to the return address
+        ]
+        self._writelines(lines)

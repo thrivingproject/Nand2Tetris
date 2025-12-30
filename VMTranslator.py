@@ -14,9 +14,9 @@ while parser.has_more_lines():
         case CommandType.C_ARITHMETIC:
             cw.write_arithmetic(parser.arg_1())
         case CommandType.C_CALL:
-            ...
+            cw.write_call(parser.arg_1(), parser.arg_2())
         case CommandType.C_FUNCTION:
-            ...
+            cw.write_function(parser.arg_1(), parser.arg_2())
         case CommandType.C_GOTO:
             cw.write_goto(parser.arg_1())
         case CommandType.C_IF:
