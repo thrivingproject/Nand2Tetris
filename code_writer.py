@@ -126,12 +126,21 @@ class CodeWriter:
         lines += [*_PUSH_D_TO_STACK]
         return lines
 
-    def _get_return_label_symbol(self):
+    def _get_fn_return_label_symbol(self):
         """Return `functionName$ret.i` and update label dictionary with current value of i."""
         ret_label_prefix = f"{self._function}$ret."
         i = self._label_d.setdefault(ret_label_prefix, 0)
         self._label_d[ret_label_prefix] += 1
         return ret_label_prefix + str(i)
+
+    def _get_ret_address_label_symbol(self, computation: str) -> str:
+        """Return a label symbol used when performing reusable assembly functionality.
+
+        The label is used to store the return address and inject the return label when before jumping to reusable comparisons, function call, and function return assembly.
+        """
+        n = self._label_d.setdefault(computation, 0)
+        self._label_d[computation] += 1
+        return f"RET_ADDRESS_{computation}{n}"
 
     def _get_reusable_comparisons(self):
         """Return assembly for eq, lt, gt operations.
@@ -175,9 +184,7 @@ class CodeWriter:
         then jumps to the reusable comparison assembly.
         """
         operator = command.upper()
-        num = self._label_d.setdefault(operator, 0)
-        self._label_d[operator] += 1
-        return_address_symbol = f"RET_ADDRESS_{operator}{num}"
+        return_address_symbol = self._get_ret_address_label_symbol(operator)
         return [
             f"@{return_address_symbol}",
             "D=A",
@@ -227,7 +234,7 @@ class CodeWriter:
             fn_name: The label for the callee.
             n_args: The number of arguments pushed onto the stack.
         """
-        return_label_symbol = self._get_return_label_symbol()
+        return_label_symbol = self._get_fn_return_label_symbol()
         lines = [
             f"// call {fn_name} {n_args}",
             f"@{return_label_symbol}",
