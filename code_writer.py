@@ -219,9 +219,14 @@ class CodeWriter:
             "// Return reusable snippet",
             "(START_RETURN)",
             "@LCL",
-            "D=M-1",
+            "D=M",
             "@R13",
-            "M=D",  # Store pointer to end of caller's stack frame in R13
+            "M=D",  # Store pointer register after caller's frame in R13
+            "@5",
+            "A=D-A",
+            "D=M",
+            "@R14",
+            "M=D",  # Store return address in R14
             *_POP_TOP_OF_STACK_TO_D,
             "@ARG",
             "A=M",
@@ -230,9 +235,7 @@ class CodeWriter:
             "D=M+1",
             "@SP",
             "M=D",  # Reposition SP for the caller
-            "@R13",
-            "A=M",  # Select last register of stack frame
-            "D=M",
+            *_UPDATE_FRAME_POINTER,
             "@THAT",
             "M=D",  # Restore THAT for caller
             *_UPDATE_FRAME_POINTER,
@@ -244,8 +247,7 @@ class CodeWriter:
             *_UPDATE_FRAME_POINTER,
             "@LCL",
             "M=D",  # Restore LCL for caller
-            "@R13",
-            "A=M-1",  # Select register containing pointer to return address
+            "@R14",
             "A=M",  # Select return address
             "0;JMP",  # Jump to the return address
         ]
@@ -324,7 +326,7 @@ class CodeWriter:
             "@R14",
             "M=D",  # Store callee address in R14
             f"@{return_label_symbol}",
-            "D=A",
+            "D=A",  # Store return address in D
             "@CALL_START",
             "0;JMP",  # Jump to reusable call assembly
             f"({return_label_symbol})",
