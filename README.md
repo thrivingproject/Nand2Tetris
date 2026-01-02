@@ -1,6 +1,6 @@
 # Hack VM Translator
 
-Implementation of Hack Virtual Machine Specification targeting the Hack Computer.
+Translates Hack VM code to Hack Assembly.
 
 ## Design
 
