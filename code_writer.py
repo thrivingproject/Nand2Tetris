@@ -50,6 +50,7 @@ class CodeWriter:
         self.write_call("Sys.init", 0)
         self._writelines(self._get_reusable_comparisons())
         self._writelines(self._get_reusable_write_call())
+        self._writelines(self._get_reusable_write_return())
 
     def _writelines(self, lines: list[str]):
         """Add newline character to end of each line and write lines to file."""
@@ -60,6 +61,7 @@ class CodeWriter:
                     "// Bootstrap",
                     "// Comparisons",
                     "// Call reusable snippet",
+                    "// Return reusable snippet",
                 )
             ):
                 self._out.write("\t" + line + "\n")
@@ -212,6 +214,42 @@ class CodeWriter:
             "0;JMP",  # Jump to callee
         ]
 
+    def _get_reusable_write_return(self) -> list[str]:
+        return [
+            "// Return reusable snippet",
+            "(START_RETURN)",
+            "@LCL",
+            "D=M-1",
+            "@R13",
+            "M=D",  # Store pointer to end of caller's stack frame in R13
+            *_POP_TOP_OF_STACK_TO_D,
+            "@ARG",
+            "A=M",
+            "M=D",  # Put callee's return value on top of caller's stack
+            "@ARG",
+            "D=M+1",
+            "@SP",
+            "M=D",  # Reposition SP for the caller
+            "@R13",
+            "A=M",  # Select last register of stack frame
+            "D=M",
+            "@THAT",
+            "M=D",  # Restore THAT for caller
+            *_UPDATE_FRAME_POINTER,
+            "@THIS",
+            "M=D",  # Restore THIS for caller
+            *_UPDATE_FRAME_POINTER,
+            "@ARG",
+            "M=D",  # Restore ARG for caller
+            *_UPDATE_FRAME_POINTER,
+            "@LCL",
+            "M=D",  # Restore LCL for caller
+            "@R13",
+            "A=M-1",  # Select register containing pointer to return address
+            "A=M",  # Select return address
+            "0;JMP",  # Jump to the return address
+        ]
+
     def _write_comparison_command(self, command: str):
         """Write assembly code to effect comparison commands.
 
@@ -359,39 +397,9 @@ class CodeWriter:
     def write_return(self) -> None:
         """Write assembly code that implements the return command.
 
-        `return` transfers execution to the command just following the call command in the code of the function that called the current function.
+        `return` transfers execution to the command just following
+        the call command in the code of the function that called the
+        current function.
         """
-        lines = [
-            f"// return",
-            "@LCL",
-            "D=M-1",
-            "@R13",
-            "M=D",  # Store pointer to end of caller's stack frame in R13
-            *_POP_TOP_OF_STACK_TO_D,
-            "@ARG",
-            "A=M",
-            "M=D",  # Put callee's return value on top of caller's stack
-            "@ARG",
-            "D=M+1",
-            "@SP",
-            "M=D",  # Reposition SP for the caller
-            "@R13",
-            "A=M",  # Select last register of stack frame
-            "D=M",
-            "@THAT",
-            "M=D",  # Restore THAT for caller
-            *_UPDATE_FRAME_POINTER,
-            "@THIS",
-            "M=D",  # Restore THIS for caller
-            *_UPDATE_FRAME_POINTER,
-            "@ARG",
-            "M=D",  # Restore ARG for caller
-            *_UPDATE_FRAME_POINTER,
-            "@LCL",
-            "M=D",  # Restore LCL for caller
-            "@R13",
-            "A=M-1",  # Select register containing pointer to return address
-            "A=M",  # Select return address
-            "0;JMP",  # Jump to the return address
-        ]
+        lines = [f"// return", "@START_RETURN", "0;JMP"]
         self._writelines(lines)
