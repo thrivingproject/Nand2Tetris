@@ -49,12 +49,18 @@ class CodeWriter:
         self._writelines(["// Bootstrap", "@256", "D=A", "@SP", "M=D"])
         self.write_call("Sys.init", 0)
         self._writelines(self._get_reusable_comparisons())
+        self._writelines(self._get_reusable_write_call())
 
     def _writelines(self, lines: list[str]):
         """Add newline character to end of each line and write lines to file."""
         for line in lines:
             if not line.startswith(
-                ("// function", "// Bootstrap", "// Comparisons")
+                (
+                    "// function",
+                    "// Bootstrap",
+                    "// Comparisons",
+                    "// Call reusable snippet",
+                )
             ):
                 self._out.write("\t" + line + "\n")
             else:
@@ -174,6 +180,47 @@ class CodeWriter:
             ]
         return lines
 
+    def _get_reusable_write_call(self) -> list[str]:
+        """Return assembly of reusable write call snippet.
+
+        Snippet expects following:
+        - nArgs pushed stored in R13
+        - callee address stored in R14
+        - caller return address is stored in D
+        """
+        return [
+            "// Call reusable snippet",
+            "(CALL_START)",
+            *_PUSH_D_TO_STACK,  # Push return address
+            "@LCL",
+            "D=M",
+            *_PUSH_D_TO_STACK,  # Push caller's LCL onto stack
+            "@ARG",
+            "D=M",
+            *_PUSH_D_TO_STACK,  # Push caller's ARG onto stack
+            "@THIS",
+            "D=M",
+            *_PUSH_D_TO_STACK,  # Push caller's THIS onto stack
+            "@THAT",
+            "D=M",
+            *_PUSH_D_TO_STACK,  # Push caller's THAT onto stack
+            "@5",
+            "D=A",
+            "@R13",
+            "D=D+M",
+            "@SP",
+            "D=M-D",
+            "@ARG",
+            "M=D",  # Update ARG for callee function
+            "@SP",
+            "D=M",
+            "@LCL",
+            "M=D",  # Update LCL for callee function
+            "@R14",
+            "A=M",
+            "0;JMP",  # Jump to callee
+        ]
+
     def _write_comparison_command(self, command: str):
         """Write assembly code to effect comparison commands.
 
@@ -237,33 +284,18 @@ class CodeWriter:
         return_label_symbol = self._get_fn_return_label_symbol()
         lines = [
             f"// call {fn_name} {n_args}",
+            f"@{n_args}",
+            "D=A",
+            "@R13",
+            "M=D",  # Store nArgs in R13
+            f"@{fn_name}",
+            "D=A",
+            "@R14",
+            "M=D",  # Store callee address in R14
             f"@{return_label_symbol}",
             "D=A",
-            *_PUSH_D_TO_STACK,  # Push return address
-            "@LCL",
-            "D=M",
-            *_PUSH_D_TO_STACK,  # Push caller's LCL onto stack
-            "@ARG",
-            "D=M",
-            *_PUSH_D_TO_STACK,  # Push caller's ARG onto stack
-            "@THIS",
-            "D=M",
-            *_PUSH_D_TO_STACK,  # Push caller's THIS onto stack
-            "@THAT",
-            "D=M",
-            *_PUSH_D_TO_STACK,  # Push caller's THAT onto stack
-            f"@{5 + n_args}",
-            "D=A",
-            "@SP",
-            "D=M-D",
-            "@ARG",
-            "M=D",  # Update ARG for callee function
-            "@SP",
-            "D=M",
-            "@LCL",
-            "M=D",  # Update LCL for callee function
-            f"@{fn_name}",
-            "0;JMP",  # Jump to callee
+            "@CALL_START",
+            "0;JMP",  # Jump to reusable call assembly
             f"({return_label_symbol})",
         ]
         self._writelines(lines)
