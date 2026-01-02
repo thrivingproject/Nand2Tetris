@@ -228,7 +228,7 @@ class CodeWriter:
     def write_call(self, fn_name: str, n_args: int) -> None:
         """Write assembly code that implements the call command.
 
-        `call fn_name n_args` calls the named function. The command informs that n_args arguments have pushed onto the stack before the call.
+        `call fn_name n_args` calls fn_name. The command informs that n_args arguments have pushed onto the stack before the call.
 
         Args:
             fn_name: The label for the callee.
@@ -242,16 +242,16 @@ class CodeWriter:
             *_PUSH_D_TO_STACK,  # Push return address
             "@LCL",
             "D=M",
-            *_PUSH_D_TO_STACK,  # Push caller's LCL
+            *_PUSH_D_TO_STACK,  # Push caller's LCL onto stack
             "@ARG",
             "D=M",
-            *_PUSH_D_TO_STACK,  # Push caller's ARG
+            *_PUSH_D_TO_STACK,  # Push caller's ARG onto stack
             "@THIS",
             "D=M",
-            *_PUSH_D_TO_STACK,  # Push caller's THIS
+            *_PUSH_D_TO_STACK,  # Push caller's THIS onto stack
             "@THAT",
             "D=M",
-            *_PUSH_D_TO_STACK,  # Push caller's THAT
+            *_PUSH_D_TO_STACK,  # Push caller's THAT onto stack
             f"@{5 + n_args}",
             "D=A",
             "@SP",
