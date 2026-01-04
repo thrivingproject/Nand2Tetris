@@ -6,7 +6,7 @@ class Parser:
 
     class InstructionType(Enum):
         A_INSTRUCTION = 1
-        """@xxx, sets A register to constant or the value that variable xxx is bound to, selects RAM and ROM address."""
+        """@xxx, sets A register to constant or the value that symbol xxx is bound to, selects RAM and ROM address."""
         C_INSTRUCTION = 2
         L_INSTRUCTION = 3
         """Label instruction"""

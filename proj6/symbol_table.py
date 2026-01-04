@@ -1,5 +1,10 @@
 class SymbolTable:
-    """Associate symbols with the decimal value they are bound to."""
+    """Associate symbols with the decimal value they are bound to.
+
+    Symbols are either predefined symbols, label symbols, or variable symbols:
+    - Label symbols are bound to the ROM address of the instruction that follows their declaration.
+    - Variable symbols are bound to consecutive RAM addresses starting at address 16.
+    """
 
     def __init__(self) -> None:
         """Initializes symbol table with predefined symbols"""
@@ -30,11 +35,11 @@ class SymbolTable:
         }
 
     def add_symbol(self, symbol: str, address: int) -> None:
-        """Add the pair (symbol, address) to the symbol table"""
+        """Add the pair (symbol, address) to the symbol table."""
         self._dict[symbol] = address
 
     def contains(self, symbol: str) -> bool:
-        """Check if the symbol table contains the given symbol"""
+        """Check if the symbol table contains the given symbol."""
         return symbol in self._dict
 
     def get_bound_decimal(self, symbol: str) -> int:
