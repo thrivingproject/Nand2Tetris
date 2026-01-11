@@ -9,6 +9,7 @@ Self-study of Elements of computing systems. Projects completed by following tex
 1. [CPU / Computer Architecture](./proj5/)
 1. [Assembler](./proj6/)
 1. [Virtual Machine Translator](./proj7/)
+1. [Compiler](./proj10/)
 
 ## Works Cited
 
