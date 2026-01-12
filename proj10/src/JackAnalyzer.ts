@@ -12,50 +12,10 @@ import CompilationEngine from "./CompilationEngine.js";
  */
 function processJackFile(filepath: string) {
     const jt = new JackTokenizer(filepath);
-    const xmlFilePath = filepath.replace(".jack", "T.xml");
-    let xmlBody = getXmlBody(jt);
-    fs.writeFileSync(xmlFilePath, `<tokens>\n${xmlBody}</tokens>`);
-}
-
-function getXmlBody(jt: JackTokenizer) {
-    let xmlBody = "";
-    while (jt.hasMoreTokens()) {
-        jt.advance();
-        let token: Keyword | string;
-        let tag: string;
-        switch (jt.tokenType()) {
-            case TokenType.IDENTIFIER:
-                tag = "identifier";
-                token = jt.identifier();
-                break;
-            case TokenType.INT_CONST:
-                tag = "integerConstant";
-                token = jt.intVal().toString();
-                break;
-            case TokenType.KEYWORD:
-                tag = "keyword";
-                token = jt.keyWord();
-                break;
-            case TokenType.STRING_CONST:
-                token = jt.stringVal().replace(/"/g, "");
-                tag = "stringConstant";
-                break;
-            case TokenType.SYMBOL:
-                tag = "symbol";
-                token = jt.symbol();
-                if (token === "<")
-                    token = "&lt;";
-                else if (token === ">")
-                    token = "&gt;";
-                else if (token === "&")
-                    token = "&amp;";
-                else if (token === '"')
-                    token = "&quot;";
-                break;
-        }
-        xmlBody += `<${tag}> ${token} </${tag}>\n`;
-    }
-    return xmlBody;
+    const xmlFilePath = filepath.replace(".jack", "C.xml");
+    const engine = new CompilationEngine(jt, xmlFilePath);
+    engine.compileClass();
+    return;
 }
 
 const arg = process.argv[2];
