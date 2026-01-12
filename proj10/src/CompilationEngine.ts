@@ -3,10 +3,17 @@ import type { I_CompilationEngine } from "./interfaces.js";
 import type JackTokenizer from "./JackTokenizer.js";
 import { Keyword, TokenType } from './enums.js';
 
+/**
+ * Gets its input from a JackTokenizer, and emits its output to an output file,
+ * using parsing routines. Each parsing routine *compilexxx* is responsible for
+ * handling all the tokens that make up the construct *xxx*, advancing the
+ * tokenizer exactly beyond these tokens and outputting the parsing of *xxx*.
+ */
 export default class CompilationEngine implements I_CompilationEngine {
     private xmlBody = "";
     private indentLvl: number;
     private readonly SPACES_PER_INDENT = 2;
+
     /**
      * Creates a new compilation engine with the given input and output. The
      * next routine called (by the `JackAnalyzer`) must be `compileClass`.
