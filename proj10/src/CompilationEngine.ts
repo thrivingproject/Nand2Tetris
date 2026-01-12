@@ -84,9 +84,9 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.startNonTerminalConstruct("class");
         while (this.input.hasMoreTokens()) {
             this.input.advance();
+            // Needed to write variable and subroutine declarations
             const keyword = this.input.tokenType() === TokenType.KEYWORD
                 && this.input.keyWord();
-
             switch (keyword) {
                 case Keyword.STATIC:
                 case Keyword.FIELD:
@@ -98,6 +98,7 @@ export default class CompilationEngine implements I_CompilationEngine {
                     this.compileSubroutine();
                     break;
                 default:
+                    // Needed to Write 'class', className and brackets
                     this.writeToken();
                     break;
             }
