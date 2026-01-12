@@ -14,7 +14,7 @@ function processJackFile(filepath: string) {
     const jt = new JackTokenizer(filepath);
     const xmlFilePath = filepath.replace(".jack", "T.xml");
     let xmlBody = getXmlBody(jt);
-    fs.writeFileSync(xmlFilePath, `<tokens>\n${xmlBody}</tokens>`);
+    fs.writeFileSync(xmlFilePath, `<tokens>\n${xmlBody}</tokens>\n`);
 }
 
 function getXmlBody(jt: JackTokenizer) {
