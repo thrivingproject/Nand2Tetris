@@ -19,23 +19,23 @@ function processJackFile(filepath: string) {
 }
 
 const arg = process.argv[2];
-if (arg !== undefined) {
-    const stats = fs.statSync(arg);
-    if (stats.isFile())
-        if (!arg.endsWith(".jack"))
-            throw new Error("The source file must have a .jack extension.");
-        else
-            processJackFile(arg);
-    else if (stats.isDirectory()) {
-        const dir = fs.opendirSync(arg);
-        let dirent;
-        while ((dirent = dir.readSync()))
-            if (dirent.isFile() && dirent.name.endsWith(".jack"))
-                processJackFile(path.join(arg, dirent.name));
-        dir.closeSync();
-    }
+if (arg === undefined)
+    throw Error("Usage: node dist/JackAnalyzer.js source");
+
+const stats = fs.statSync(arg);
+if (stats.isFile())
+    if (!arg.endsWith(".jack"))
+        throw new Error("The source file must have a .jack extension.");
     else
-        throw new Error("The source must be a directory or a file.");
+        processJackFile(arg);
+else if (stats.isDirectory()) {
+    const dir = fs.opendirSync(arg);
+    let dirent;
+    while ((dirent = dir.readSync()))
+        if (dirent.isFile() && dirent.name.endsWith(".jack"))
+            processJackFile(path.join(arg, dirent.name));
+    dir.closeSync();
 }
 else
-    throw Error("Usage: node dist/JackAnalyzer.js source");
+    throw new Error("The source must be a directory or a file.");
+
