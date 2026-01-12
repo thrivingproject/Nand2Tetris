@@ -8,37 +8,55 @@ import CompilationEngine from "./CompilationEngine.js";
 /**
  * Process a single `.jack` file.
  * 
- * @param filepath path to `.jack` file
+ * @param filepath path of `.jack` file
  */
 function processJackFile(filepath: string) {
     const jt = new JackTokenizer(filepath);
+    const xmlFilePath = filepath.replace(".jack", "T.xml");
+    let xmlBody = getXmlBody(jt);
+    fs.writeFileSync(xmlFilePath, `<tokens>\n${xmlBody}</tokens>`);
+}
+
+function getXmlBody(jt: JackTokenizer) {
+    let xmlBody = "";
     while (jt.hasMoreTokens()) {
         jt.advance();
-        const tokenType = jt.tokenType();
         let token: Keyword | string;
-        switch (tokenType) {
+        let tag: string;
+        switch (jt.tokenType()) {
             case TokenType.IDENTIFIER:
+                tag = "identifier";
                 token = jt.identifier();
                 break;
             case TokenType.INT_CONST:
+                tag = "integerConstant";
                 token = jt.intVal().toString();
                 break;
             case TokenType.KEYWORD:
+                tag = "keyword";
                 token = jt.keyWord();
                 break;
-            case TokenType.SYMBOL:
-                token = jt.symbol();
-                break;
             case TokenType.STRING_CONST:
-                token = jt.stringVal();
+                token = jt.stringVal().replace('"', "");
+                tag = "stringConstant";
                 break;
-            default:
-                throw new Error(`Unrecognized token type. ${tokenType}`);
+            case TokenType.SYMBOL:
+                tag = "symbol";
+                token = jt.symbol();
+                if (token === "<")
+                    token = "&lt;";
+                else if (token === ">")
+                    token = "&gt;";
+                else if (token === "&")
+                    token = "&amp;";
+                else if (token === '"')
+                    token = "&quot;";
+                break;
         }
-        console.log(tokenType, token);
+        xmlBody += `<${tag}> ${token} </${tag}>\n`;
     }
+    return xmlBody;
 }
-
 
 const arg = process.argv[2];
 if (arg !== undefined) {
@@ -61,5 +79,3 @@ if (arg !== undefined) {
 }
 else
     throw Error("Usage: node dist/JackAnalyzer.js source");
-
-
