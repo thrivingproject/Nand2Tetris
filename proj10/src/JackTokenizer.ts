@@ -9,22 +9,54 @@ import { readFileSync } from 'node:fs';
  * the *type* of each token, as defined by the Jack grammar.
  */
 export default class JackTokenizer implements I_JackTokenizer {
-    private inInline = false;
-    private inMultiline = false;
-    private inStringConstant = false;
+    private readonly tokenStream: string;
+    private index: number;
+    private currentToken: string;
 
     /**
      * Open the input `.jack` file and get ready to tokenize it.
-     * @param stream The input stream
+     * @param input The input stream
      */
-    constructor (stream: string) {
-        const text = readFileSync(stream, 'utf8');
+    constructor (input: string) {
+        const text = readFileSync(input, 'utf8');
+        this.tokenStream = this.removeComments(text);
+        this.index = 0;
+        this.currentToken = "";
     }
 
+    /**
+     * Remove comments. Inline comments start with `//`, block with `/*`
+     * 
+     * @param text The input text
+     */
+    private removeComments(text: string): string {
+        let cleanedText = "";
+        const lines = text.split('\n');
+        const lineIter = lines[Symbol.iterator]();
+        let result = lineIter.next();
+        while (!result.done) {
+            // Trim so we can use startsWith
+            const trimmed = result.value.trim();
+            if (trimmed.startsWith("/*")) {
+                // Skip lines until */ since that's where comment ends
+                while (!result.done && !result.value.includes("*/"))
+                    result = lineIter.next();
+            } else {
+                const [code, ..._] = trimmed.split("//");
+                if (code)
+                    cleanedText += code;
+            }
+            // Advance iterator to assess line after comment / cleaned code line 
+            result = lineIter.next();
+        }
+        return cleanedText;
+    }
     hasMoreTokens(): boolean {
+        return this.index < this.tokenStream.length;
+    }
+    advance(): void {
         throw new Error("Method not implemented.");
     }
-    advance(): void { }
     tokenType(): TokenType {
         throw new Error("Method not implemented.");
     }
@@ -44,3 +76,9 @@ export default class JackTokenizer implements I_JackTokenizer {
         throw new Error("Method not implemented.");
     }
 }
+
+// (function () {
+//     const jt = new JackTokenizer('test/Square/SquareGame.jack');
+//     console.log(jt.tokenStream);
+// })();
+
