@@ -14,7 +14,7 @@ function processJackFile(filepath: string) {
     const jt = new JackTokenizer(filepath);
     const xmlFilePath = filepath.replace(".jack", "T.xml");
     let xmlBody = getXmlBody(jt);
-    fs.writeFileSync(xmlFilePath, `<tokens>\n${xmlBody}</tokens>\n`);
+    fs.writeFileSync(xmlFilePath, `<tokens>\n${xmlBody}</tokens>`);
 }
 
 function getXmlBody(jt: JackTokenizer) {
@@ -37,7 +37,7 @@ function getXmlBody(jt: JackTokenizer) {
                 token = jt.keyWord();
                 break;
             case TokenType.STRING_CONST:
-                token = jt.stringVal().replace('"', "");
+                token = jt.stringVal().replace(/"/g, "");
                 tag = "stringConstant";
                 break;
             case TokenType.SYMBOL:
