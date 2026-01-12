@@ -9,8 +9,7 @@ import { readFileSync } from 'node:fs';
  * the *type* of each token, as defined by the Jack grammar.
  */
 export default class JackTokenizer implements I_JackTokenizer {
-    private readonly tokenStream: string;
-    private index: number;
+    private tokenStream: string;
     private currentToken: string;
 
     /**
@@ -20,7 +19,6 @@ export default class JackTokenizer implements I_JackTokenizer {
     constructor (input: string) {
         const text = readFileSync(input, 'utf8');
         this.tokenStream = this.removeComments(text);
-        this.index = 0;
         this.currentToken = "";
     }
 
@@ -54,33 +52,71 @@ export default class JackTokenizer implements I_JackTokenizer {
         return cleanedText;
     }
     hasMoreTokens(): boolean {
-        return this.index < this.tokenStream.length;
+        return Boolean(this.tokenStream);
     }
     advance(): void {
-        throw new Error("Method not implemented.");
+        // reset current token
+        this.currentToken = "";
+        /** Use to track how many chars we consume from tokenStream */
+        let charsConsumed = 0;
+
+        // Different logic for string constant and other tokens
+        if (this.tokenStream[0] === '"') {
+            const indexOfClosingQuote = this.tokenStream.indexOf('"', 1);
+            charsConsumed = indexOfClosingQuote + 1;
+            this.currentToken = this.tokenStream.slice(0, charsConsumed);
+        } else {
+            for (const char of this.tokenStream) {
+                if (symbols.includes(char)) {
+                    // Only consume if symbol is token so we can consume later
+                    if (charsConsumed === 0) {
+                        this.currentToken = char;
+                        charsConsumed++;
+                    }
+                    break;
+                } else if (char === ' ') {
+                    // Don't consume space since we'll trim before returning
+                    break;
+                } else {
+                    // Build up token
+                    this.currentToken += char;
+                    charsConsumed++;
+                }
+            }
+        }
+        // Need so next call starts with first char of next token
+        const unconsumed = this.tokenStream.slice(charsConsumed);
+        this.tokenStream = unconsumed.trimStart();
     }
     tokenType(): TokenType {
-        throw new Error("Method not implemented.");
+        if (symbols.includes(this.currentToken))
+            return TokenType.SYMBOL;
+        else if (keywords.has(this.currentToken))
+            return TokenType.KEYWORD;
+        else if (Number.isInteger(Number.parseInt(this.currentToken)))
+            return TokenType.INT_CONST;
+        else if (this.currentToken[0] === '"')
+            return TokenType.STRING_CONST;
+        else return TokenType.IDENTIFIER;
     }
     keyWord(): Keyword {
-        throw new Error("Method not implemented.");
+        const keyword = keywords.get(this.currentToken);
+        if (keyword === undefined)
+            throw new Error(
+                `Current token is not a keyword: ${this.currentToken}.`
+            );
+        return keyword;
     }
     symbol(): string {
-        throw new Error("Method not implemented.");
+        return this.currentToken;
     }
     identifier(): string {
-        throw new Error("Method not implemented.");
+        return this.currentToken;
     }
     intVal(): number {
-        throw new Error("Method not implemented.");
+        return Number.parseInt(this.currentToken);
     }
     stringVal(): string {
-        throw new Error("Method not implemented.");
+        return this.currentToken;
     }
 }
-
-// (function () {
-//     const jt = new JackTokenizer('test/Square/SquareGame.jack');
-//     console.log(jt.tokenStream);
-// })();
-
