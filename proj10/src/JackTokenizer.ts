@@ -35,16 +35,18 @@ export default class JackTokenizer implements I_JackTokenizer {
         const lineIter = lines[Symbol.iterator]();
         let result = lineIter.next();
         while (!result.done) {
-            // Trim so we can use startsWith
-            const trimmed = result.value.trim();
-            if (trimmed.startsWith("/*")) {
-                // Skip lines until */ since that's where comment ends
+            // Trim left so we can test if line starts with "/*"
+            const line = result.value.trimStart();
+            if (line.startsWith("/*")) {
                 while (!result.done && !result.value.includes("*/"))
                     result = lineIter.next();
             } else {
-                const [code, ..._] = trimmed.split("//");
+                // Split to put code without comment in arr[0]
+                const [code, ..._] = line.split("//");
+                // Check for truthiness to ignore empty lines
                 if (code)
-                    cleanedText += code;
+                    // Trim end since splitting at inline comment leaves space
+                    cleanedText += code.trimEnd();
             }
             // Advance iterator to assess line after comment / cleaned code line 
             result = lineIter.next();
