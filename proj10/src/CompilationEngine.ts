@@ -139,9 +139,10 @@ export default class CompilationEngine implements I_CompilationEngine {
             if (this.input.tokenType() === TokenType.SYMBOL) {
                 if (this.input.symbol() === '(') {
                     this.compileParameterList();
-                    // Safe since we checked for token and advanced in paramList
-                    this.writeToken();  // Should be `)`
+                    // Should be `)` since we advanced in `compileParameterList`
+                    this.writeToken();
                     this.compileSubroutineBody();
+                    // Break since `compileSubroutineBody` writes the brackets
                     break;
                 }
             }
@@ -152,7 +153,7 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.writeConstructTagAndIndent("parameterList");
         while (this.input.hasMoreTokens()) {
             this.input.advance();
-            // Needed so `)` is written in `compileSubroutine` instead of here
+            // Needed so `)` is written in `compileSubroutineDec`
             if (
                 this.input.tokenType() === TokenType.SYMBOL &&
                 this.input.symbol() === ')'
@@ -165,12 +166,43 @@ export default class CompilationEngine implements I_CompilationEngine {
     }
     compileSubroutineBody(): void {
         this.writeConstructTagAndIndent("subroutineBody");
-        while (this.input.hasMoreTokens()) { break; }
+
+        while (this.input.hasMoreTokens()) {
+            this.input.advance();
+            const tt = this.input.tokenType();
+            const kw = tt === TokenType.KEYWORD && this.input.keyWord();
+
+            // Need to write varDec and statements in respective methods
+            if (kw === Keyword.VAR) this.compileVarDec();
+            else if (kw === Keyword.LET) this.compileLet();
+            else if (kw === Keyword.IF) this.compileIf();
+            else if (kw === Keyword.WHILE) this.compileWhile();
+            else if (kw === Keyword.DO) this.compileDo();
+            else if (kw === Keyword.RETURN) this.compileReturn();
+            else {
+                // Need to write brackets here and break after closing bracket
+                this.writeToken();
+                if (this.input.symbol() === '}') break;
+            }
+        }
         this.writeConstructTagAndDedent("subroutineBody");
     }
     compileVarDec(): void {
         this.writeConstructTagAndIndent("varDec");
-        while (this.input.hasMoreTokens()) { break; }
+        // Needed to write 'var' token advanced to in `compileSubroutineBody`
+        this.writeToken();
+
+        while (this.input.hasMoreTokens()) {
+            this.input.advance();
+            this.writeToken();
+            // Need to break after writing semi-colon
+            if (
+                this.input.tokenType() === TokenType.SYMBOL &&
+                this.input.symbol() === ';'
+            ) {
+                break;
+            }
+        }
         this.writeConstructTagAndDedent("varDec");
     }
     compileStatements(): void {
