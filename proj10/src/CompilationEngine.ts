@@ -91,6 +91,22 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.xmlBody += `${this.getIndents()}${tag}\n`;
     }
 
+    /**
+     * Determine if the current keyword token begins a statement construct.
+     * Should only be called if current token is a keyword.
+     * @returns true if current token is 'let', 'if', 'while', 'do', or
+     * 'return', else false
+     */
+    private keywordIsStatement() {
+        return [
+            Keyword.LET,
+            Keyword.IF,
+            Keyword.WHILE,
+            Keyword.DO,
+            Keyword.RETURN,
+        ].includes(this.input.keyWord());
+    }
+
     compileClass(): void {
         this.writeConstructTagAndIndent("class");
         while (this.input.hasMoreTokens()) {
@@ -169,12 +185,21 @@ export default class CompilationEngine implements I_CompilationEngine {
         while (this.input.hasMoreTokens()) {
             this.input.advance();
             const tokenType = this.input.tokenType();
-            if (tokenType === TokenType.KEYWORD) {
-                if (this.input.keyWord() === Keyword.VAR) this.compileVarDec();
-                else this.compileStatements();
-            } else if (tokenType === TokenType.SYMBOL) {
+            if (tokenType === TokenType.SYMBOL) {
                 this.writeToken();
-                if (this.input.symbol() === '}') break;
+            } else if (tokenType === TokenType.KEYWORD) {
+                if (this.input.keyWord() === Keyword.VAR) this.compileVarDec();
+                else if (this.keywordIsStatement()) {
+                    this.compileStatements();
+                    // Token is '}' since we looked ahead in `compileStatements`
+                    this.writeToken();
+                    break;
+                } else {
+                    throw new Error(
+                        "Unexpected keyword in subroutine body: " +
+                        this.input.keyWord()
+                    );
+                }
             } else {
                 throw new Error(
                     `TokenType should be KEYWORD or SYMBOL, it is ${tokenType}`
@@ -203,7 +228,37 @@ export default class CompilationEngine implements I_CompilationEngine {
     }
     compileStatements(): void {
         this.writeConstructTagAndIndent("statements");
-        while (this.input.hasMoreTokens()) { break; }
+        if (!this.keywordIsStatement()) {
+            throw new Error(
+                "compileStatements called on non-statement keyword: " +
+                this.input.tokenType()
+            );
+        }
+        // do-while since current token is start of statement
+        do {
+            switch (this.input.keyWord()) {
+                case Keyword.LET:
+                    this.compileLet();
+                    break;
+                case Keyword.IF:
+                    this.compileIf();
+                    break;
+                case Keyword.WHILE:
+                    this.compileWhile();
+                    break;
+                case Keyword.RETURN:
+                    this.compileReturn();
+                    break;
+                case Keyword.DO:
+                    this.compileDo();
+                    break;
+            }
+            if (this.input.hasMoreTokens()) this.input.advance();
+            else throw new Error("Unexpected end of tokens.");
+        } while (
+            this.input.tokenType() === TokenType.KEYWORD &&
+            this.keywordIsStatement()
+        );
         this.writeConstructTagAndDedent("statements");
     }
     compileLet(): void {

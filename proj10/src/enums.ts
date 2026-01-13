@@ -1,5 +1,9 @@
 export const enum TokenType {
-    KEYWORD, IDENTIFIER, SYMBOL, INT_CONST, STRING_CONST
+    KEYWORD = "keyword",
+    IDENTIFIER = "identifier",
+    SYMBOL = "symbol",
+    INT_CONST = "integer constant",
+    STRING_CONST = "string constant"
 }
 
 export const symbols = ["{", "}", "(", ")", "[", "]", ".", ",", ";", "+", "-",

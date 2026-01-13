@@ -84,6 +84,11 @@ export interface I_CompilationEngine {
      * `{` and `}`:
      * 
      * statement*
+     * 
+     * where statement is: 
+     * 
+     * letStatement | ifStatement | whileStatement | doStatement |
+     * returnStatement
      */
     compileStatements(): void;
     /**
