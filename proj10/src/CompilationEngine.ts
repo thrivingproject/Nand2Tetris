@@ -166,23 +166,19 @@ export default class CompilationEngine implements I_CompilationEngine {
     }
     compileSubroutineBody(): void {
         this.writeConstructTagAndIndent("subroutineBody");
-
         while (this.input.hasMoreTokens()) {
             this.input.advance();
-            const tt = this.input.tokenType();
-            const kw = tt === TokenType.KEYWORD && this.input.keyWord();
-
-            // Need to write varDec and statements in respective methods
-            if (kw === Keyword.VAR) this.compileVarDec();
-            else if (kw === Keyword.LET) this.compileLet();
-            else if (kw === Keyword.IF) this.compileIf();
-            else if (kw === Keyword.WHILE) this.compileWhile();
-            else if (kw === Keyword.DO) this.compileDo();
-            else if (kw === Keyword.RETURN) this.compileReturn();
-            else {
-                // Need to write brackets here and break after closing bracket
+            const tokenType = this.input.tokenType();
+            if (tokenType === TokenType.KEYWORD) {
+                if (this.input.keyWord() === Keyword.VAR) this.compileVarDec();
+                else this.compileStatements();
+            } else if (tokenType === TokenType.SYMBOL) {
                 this.writeToken();
                 if (this.input.symbol() === '}') break;
+            } else {
+                throw new Error(
+                    `TokenType should be KEYWORD or SYMBOL, it is ${tokenType}`
+                );
             }
         }
         this.writeConstructTagAndDedent("subroutineBody");
