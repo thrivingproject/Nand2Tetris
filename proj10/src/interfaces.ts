@@ -12,7 +12,8 @@ export interface I_JackTokenizer {
     advance(): void;
     /** Return the type of the current token, as a constant. */
     tokenType(): TokenType;
-    /** Return the keyword which is the current token, as a constant. Should
+    /**
+     * Return the keyword which is the current token, as a constant. Should
      * only be called if `tokenType` is `KEYWORD`.
      */
     keyWord(): Keyword;
@@ -41,57 +42,84 @@ export interface I_JackTokenizer {
 
 export interface I_CompilationEngine {
     /**
-     * Compiles a complete class.
+     * Compiles a complete class:
+     * 
+     * '**class**' className '**{**' classVarDec* subroutineDec* '**}**'
      */
     compileClass(): void;
     /**
-     * Compiles a static variable declaration.
+     * Compiles a static variable declaration:
+     * 
+     * ('**static**' | '**field**') type varName (',' varName)* ';'
      */
     compileClassVarDec(): void;
     /**
-     * Compiles a complete method, function, or constructor.
+     * Compiles a complete method, function, or constructor declaration:
+     * 
+     * ('**constructor**' | '**function**' | '**method**') ('**void**' | type)
+     * subroutineName '**(**' parameterList '**)**' subroutineBody
      */
-    compileSubroutine(): void;
+    compileSubroutineDec(): void;
     /**
      * Compiles a (possibly empty) parameter list. Does not handle the enclosing
-     * parentheses tokens `(` and `)`.
+     * parentheses tokens `(` and `)`:
+     * 
+     * ((type varName) (',' type varName)*)?
      */
     compileParameterList(): void;
     /**
-     * Compiles a subroutine's body.
+     * Compiles a subroutine's body:
+     * 
+     * '**{**' varDec* statements '**}**'
      */
     compileSubroutineBody(): void;
     /**
-     * Compiles a `var` declaration.
+     * Compiles a `var` declaration:
+     * 
+     * '**var**' type varName (',' varName)*';'
      */
     compileVarDec(): void;
     /**
      * Compiles a sequence of statements. Does not handle the enclosing brackets
-     * `{` and `}`.
+     * `{` and `}`:
+     * 
+     * statement*
      */
     compileStatements(): void;
     /**
-     * Compiles a `let` statement.
+     * Compiles a `let` statement:
+     * 
+     * '**let**' varName ('[' expression ']')? '=' expression ';'
      */
     compileLet(): void;
     /**
-     * Compiles a `if` statement.
+     * Compiles a `if` statement:
+     * 
+     * '**if**' '**(**' expression '**)**' '**{**' statements '**}**' ('**else**' '**{**' statements '**}**')? 
      */
     compileIf(): void;
     /**
-     * Compiles a `while` statement.
+     * Compiles a `while` statement:
+     * 
+     * '**while**' '**(**' expression '**)**' '**{**' statements '**}**'
      */
     compileWhile(): void;
     /**
-     * Compiles a `do` statement.
+     * Compiles a `do` statement:
+     * 
+     * '**do**' subroutineCall ';'
      */
     compileDo(): void;
     /**
-     * Compiles a `return` statement.
+     * Compiles a `return` statement:
+     * 
+     * '**return**' expression? ';'
      */
     compileReturn(): void;
     /**
-     * Compiles an expression.
+     * Compiles an expression:
+     * 
+     * term (op term)*
      */
     compileExpression(): void;
     /**
@@ -99,11 +127,17 @@ export interface I_CompilationEngine {
      * must resolve it into a *variable*, and *array element*, or a *subroutine
      * call*. A single lookahead token, which may be `[`, `(`, or `.`, suffices
      * to distinguish between the possibilities. Any other token is not part of
-     * this term and should not be advanced over.
+     * this term and should not be advanced over:
+     * 
+     * integerConstant | stringConstant | keywordConstant | varName | 
+     * varname'[' expression ']' | subroutineCall | '**(**' expression '**)**' | 
+     * unaryOp term
      */
     compileTerm(): void;
     /**
-     * Compiles a (possibly empty) comma-separated list of expressions.
+     * Compiles a (possibly empty) comma-separated list of expressions:
+     * 
+     * (expression (',' expression)*)?
      * 
      * @returns The number of expressions in the list.
      */

@@ -106,7 +106,7 @@ export default class CompilationEngine implements I_CompilationEngine {
                 case Keyword.CONSTRUCTOR:
                 case Keyword.FUNCTION:
                 case Keyword.METHOD:
-                    this.compileSubroutine();
+                    this.compileSubroutineDec();
                     break;
                 default:
                     // Needed to Write 'class', className and brackets
@@ -131,7 +131,7 @@ export default class CompilationEngine implements I_CompilationEngine {
         }
         this.writeConstructTagAndDedent("classVarDec");
     }
-    compileSubroutine(): void {
+    compileSubroutineDec(): void {
         this.writeConstructTagAndIndent("subroutineDec");
         // Needed to write token advanced to in compileClass
         this.writeToken();
