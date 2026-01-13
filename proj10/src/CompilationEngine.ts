@@ -291,8 +291,13 @@ export default class CompilationEngine implements I_CompilationEngine {
 
         while (this.input.hasMoreTokens()) {
             this.input.advance();
-            this.writeToken();
-
+            const tType = this.input.tokenType();
+            const kw = tType === TokenType.KEYWORD && this.input.keyWord();
+            const closingBracket = tType === TokenType.SYMBOL &&
+                this.input.symbol() === '}';
+            if (kw && this.kwBelongsToStatement(kw)) this.compileStatements();
+            else this.writeToken();
+            if (closingBracket) break;
         }
         this.writeConstructTagAndDedent("whileStatement");
     }
@@ -309,11 +314,24 @@ export default class CompilationEngine implements I_CompilationEngine {
     compileReturn(): void {
         this.writeConstructTagAndIndent("returnStatement");
         // Have to write statement keyword since it was looked ahead to get here
+        this.writeToken();  // 'return'
+
+        if (this.input.hasMoreTokens()) this.input.advance();
+        else throw new Error("expression or ';'.");
+
+        if (this.input.tokenType() !== TokenType.SYMBOL) {
+            this.compileExpression();
+        }
+
+        // Call again since we may have advanced in compileExpression
+        const tType = this.input.tokenType();
+        if (tType !== TokenType.SYMBOL) {
+            throw new Error(`Expected symbol, got ${tType}`);
+        }
+        const symbol = this.input.symbol();
+        if (symbol !== ';') throw new Error(`Expected ';', got ${symbol}`);
         this.writeToken();
 
-        while (this.input.hasMoreTokens()) {
-            this.input.advance();
-        }
         this.writeConstructTagAndDedent("returnStatement");
     }
     compileExpression(): void {
