@@ -92,19 +92,18 @@ export default class CompilationEngine implements I_CompilationEngine {
     }
 
     /**
-     * Determine if the current keyword token begins a statement construct.
-     * Should only be called if current token is a keyword.
+     * Determine if the keyword begins a statement construct.
      * @returns true if current token is 'let', 'if', 'while', 'do', or
      * 'return', else false
      */
-    private keywordIsStatement() {
+    private kwBelongsToStatement(keyword: Keyword) {
         return [
             Keyword.LET,
             Keyword.IF,
             Keyword.WHILE,
             Keyword.DO,
             Keyword.RETURN,
-        ].includes(this.input.keyWord());
+        ].includes(keyword);
     }
 
     compileClass(): void {
@@ -186,26 +185,22 @@ export default class CompilationEngine implements I_CompilationEngine {
             this.input.advance();
             const tokenType = this.input.tokenType();
             if (tokenType === TokenType.SYMBOL) {
+                if (this.input.symbol() === '}') break;
                 this.writeToken();
             } else if (tokenType === TokenType.KEYWORD) {
-                if (this.input.keyWord() === Keyword.VAR) this.compileVarDec();
-                else if (this.keywordIsStatement()) {
+                const kw = this.input.keyWord();
+                if (kw === Keyword.VAR) this.compileVarDec();
+                else if (this.kwBelongsToStatement(kw)) {
                     this.compileStatements();
-                    // Token is '}' since we looked ahead in `compileStatements`
-                    this.writeToken();
+                    // Expect bracket here since compileStatements looks ahead
                     break;
-                } else {
-                    throw new Error(
-                        "Unexpected keyword in subroutine body: " +
-                        this.input.keyWord()
-                    );
-                }
-            } else {
-                throw new Error(
-                    `TokenType should be KEYWORD or SYMBOL, it is ${tokenType}`
-                );
+                } else throw new Error(`Bad keyword: ${kw}`);
             }
         }
+        const endBracket = this.input.tokenType() === TokenType.SYMBOL &&
+            this.input.symbol() === '}';
+        if (!endBracket) throw new Error("Expected '}'.");
+        this.writeToken();
         this.writeConstructTagAndDedent("subroutineBody");
     }
     compileVarDec(): void {
@@ -228,15 +223,11 @@ export default class CompilationEngine implements I_CompilationEngine {
     }
     compileStatements(): void {
         this.writeConstructTagAndIndent("statements");
-        if (!this.keywordIsStatement()) {
-            throw new Error(
-                "compileStatements called on non-statement keyword: " +
-                this.input.tokenType()
-            );
-        }
-        // do-while since current token is start of statement
+        // do-while since look ahead used to get here
         do {
-            switch (this.input.keyWord()) {
+            // Use var so it's in scope within condition check
+            var kw = this.input.keyWord();
+            switch (kw) {
                 case Keyword.LET:
                     this.compileLet();
                     break;
@@ -257,36 +248,76 @@ export default class CompilationEngine implements I_CompilationEngine {
             else throw new Error("Unexpected end of tokens.");
         } while (
             this.input.tokenType() === TokenType.KEYWORD &&
-            this.keywordIsStatement()
+            this.kwBelongsToStatement(kw)
         );
         this.writeConstructTagAndDedent("statements");
     }
     compileLet(): void {
         this.writeConstructTagAndIndent("letStatement");
-        while (this.input.hasMoreTokens()) { break; }
+        // Have to write statement keyword since it was looked ahead to get here
+        this.writeToken();
+
+        while (this.input.hasMoreTokens()) {
+            this.input.advance();
+            this.writeToken();
+            if (
+                this.input.tokenType() === TokenType.SYMBOL &&
+                this.input.symbol() === ';'
+            ) {
+                break;
+            }
+        }
         this.writeConstructTagAndDedent("letStatement");
     }
     compileIf(): void {
         this.writeConstructTagAndIndent("ifStatement");
-        while (this.input.hasMoreTokens()) { break; }
+        // Have to write statement keyword since it was looked ahead to get here
+        this.writeToken();
+
+        while (this.input.hasMoreTokens()) {
+            this.input.advance();
+            const kw = this.input.tokenType() === TokenType.KEYWORD &&
+                this.input.keyWord();
+            if (kw && this.kwBelongsToStatement(kw)) {
+                this.compileStatements();
+            } else this.writeToken();
+        }
         this.writeConstructTagAndDedent("ifStatement");
     }
     compileWhile(): void {
         this.writeConstructTagAndIndent("whileStatement");
-        while (this.input.hasMoreTokens()) { break; }
+        // Have to write statement keyword since it was looked ahead to get here
+        this.writeToken();
+
+        while (this.input.hasMoreTokens()) {
+            this.input.advance();
+            this.writeToken();
+
+        }
         this.writeConstructTagAndDedent("whileStatement");
     }
     compileDo(): void {
         this.writeConstructTagAndIndent("doStatement");
-        while (this.input.hasMoreTokens()) { break; }
+        // Have to write statement keyword since it was looked ahead to get here
+        this.writeToken();
+
+        while (this.input.hasMoreTokens()) {
+            this.input.advance();
+        }
         this.writeConstructTagAndDedent("doStatement");
     }
     compileReturn(): void {
         this.writeConstructTagAndIndent("returnStatement");
-        while (this.input.hasMoreTokens()) { break; }
+        // Have to write statement keyword since it was looked ahead to get here
+        this.writeToken();
+
+        while (this.input.hasMoreTokens()) {
+            this.input.advance();
+        }
         this.writeConstructTagAndDedent("returnStatement");
     }
     compileExpression(): void {
+        // TODO: implement later
         this.writeConstructTagAndIndent("expression");
         while (this.input.hasMoreTokens()) { break; }
         this.writeConstructTagAndDedent("expression");

@@ -80,8 +80,8 @@ export interface I_CompilationEngine {
      */
     compileVarDec(): void;
     /**
-     * Compiles a sequence of statements. Does not handle the enclosing brackets
-     * `{` and `}`:
+     * Compiles a sequence of statements. Expects current token to be the first
+     * token of statement:
      * 
      * statement*
      * 
