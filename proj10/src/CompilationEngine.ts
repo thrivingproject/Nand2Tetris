@@ -125,9 +125,7 @@ export default class CompilationEngine implements I_CompilationEngine {
             this.input.advance();
             this.writeToken();
             const isSymbol = this.input.tokenType() === TokenType.SYMBOL;
-            if (isSymbol && this.input.symbol() === ';') {
-                break;
-            }
+            if (isSymbol && this.input.symbol() === ';') break;
         }
         this.writeConstructTagAndDedent("classVarDec");
     }
@@ -146,7 +144,6 @@ export default class CompilationEngine implements I_CompilationEngine {
                     this.compileSubroutineBody();
                     break;
                 }
-
             }
         }
         this.writeConstructTagAndDedent("subroutineDec");
@@ -159,8 +156,9 @@ export default class CompilationEngine implements I_CompilationEngine {
             if (
                 this.input.tokenType() === TokenType.SYMBOL &&
                 this.input.symbol() === ')'
-            )
+            ) {
                 break;
+            }
             this.writeToken();
         }
         this.writeConstructTagAndDedent("parameterList");
