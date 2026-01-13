@@ -23,9 +23,6 @@ export default class CompilationEngine implements I_CompilationEngine {
      */
     constructor (private input: JackTokenizer, private output: string) {
         this.indentLvl = 0;
-        if (!this.input.hasMoreTokens())
-            throw new Error("Class not found.");
-        this.input.advance();
     }
 
     /**
@@ -72,15 +69,22 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.xmlBody += `${this.getIndents()}<${tag}> ${token} </${tag}>\n`;
     }
 
-    private startNonTerminalConstruct(construct: string) {
+    /**
+     * Write the tag of the construct, add indent level
+     * @param construct The name of construct, eg., classVarDec, parameterList
+     */
+    private writeConstructTagAndIndent(construct: string) {
         this.writeTag(`<${construct}>`);
         this.indentLvl += 1;
-        this.writeToken();
     }
 
-    private endNonTerminalConstruct(tagName: string) {
+    /**
+     * Write the end tag of the construct, decrease indent level
+     * @param constructName The name of construct, eg., letStatement, varDec
+     */
+    private writeConstructTagAndDedent(constructName: string) {
         this.indentLvl -= 1;
-        this.writeTag(`</${tagName}>`);
+        this.writeTag(`</${constructName}>`);
     }
 
     private writeTag(tag: string) {
@@ -88,7 +92,7 @@ export default class CompilationEngine implements I_CompilationEngine {
     }
 
     compileClass(): void {
-        this.startNonTerminalConstruct("class");
+        this.writeConstructTagAndIndent("class");
         while (this.input.hasMoreTokens()) {
             this.input.advance();
             // Needed to write variable and subroutine declarations
@@ -110,78 +114,111 @@ export default class CompilationEngine implements I_CompilationEngine {
                     break;
             }
         }
-        this.endNonTerminalConstruct("class");
+        this.writeConstructTagAndDedent("class");
         fs.writeFileSync(this.output, this.xmlBody);
     }
     compileClassVarDec(): void {
-        this.startNonTerminalConstruct("classVarDec");
-        while (this.input.hasMoreTokens()) { break; }
-        this.endNonTerminalConstruct("classVarDec");
+        this.writeConstructTagAndIndent("classVarDec");
+        // Needed to write 'static' or 'field' token advanced to in compileClass
+        this.writeToken();
+        while (this.input.hasMoreTokens()) {
+            this.input.advance();
+            this.writeToken();
+            const isSymbol = this.input.tokenType() === TokenType.SYMBOL;
+            if (isSymbol && this.input.symbol() === ';') {
+                break;
+            }
+        }
+        this.writeConstructTagAndDedent("classVarDec");
     }
     compileSubroutine(): void {
-        this.startNonTerminalConstruct("subroutineDec");
-        while (this.input.hasMoreTokens()) { break; }
-        this.endNonTerminalConstruct("subroutineDec");
+        this.writeConstructTagAndIndent("subroutineDec");
+        // Needed to write token advanced to in compileClass
+        this.writeToken();
+        while (this.input.hasMoreTokens()) {
+            this.input.advance();
+            this.writeToken();
+            if (this.input.tokenType() === TokenType.SYMBOL) {
+                if (this.input.symbol() === '(') {
+                    this.compileParameterList();
+                    // Safe since we checked for token and advanced in paramList
+                    this.writeToken();  // Should be `)`
+                    this.compileSubroutineBody();
+                    break;
+                }
+
+            }
+        }
+        this.writeConstructTagAndDedent("subroutineDec");
     }
     compileParameterList(): void {
-        this.startNonTerminalConstruct("parameterList");
-        while (this.input.hasMoreTokens()) { break; }
-        this.endNonTerminalConstruct("parameterList");
+        this.writeConstructTagAndIndent("parameterList");
+        while (this.input.hasMoreTokens()) {
+            this.input.advance();
+            // Needed so `)` is written in `compileSubroutine` instead of here
+            if (
+                this.input.tokenType() === TokenType.SYMBOL &&
+                this.input.symbol() === ')'
+            )
+                break;
+            this.writeToken();
+        }
+        this.writeConstructTagAndDedent("parameterList");
     }
     compileSubroutineBody(): void {
-        this.startNonTerminalConstruct("subroutineBody");
+        this.writeConstructTagAndIndent("subroutineBody");
         while (this.input.hasMoreTokens()) { break; }
-        this.endNonTerminalConstruct("subroutineBody");
+        this.writeConstructTagAndDedent("subroutineBody");
     }
     compileVarDec(): void {
-        this.startNonTerminalConstruct("varDec");
+        this.writeConstructTagAndIndent("varDec");
         while (this.input.hasMoreTokens()) { break; }
-        this.endNonTerminalConstruct("varDec");
+        this.writeConstructTagAndDedent("varDec");
     }
     compileStatements(): void {
-        this.startNonTerminalConstruct("statements");
+        this.writeConstructTagAndIndent("statements");
         while (this.input.hasMoreTokens()) { break; }
-        this.endNonTerminalConstruct("statements");
+        this.writeConstructTagAndDedent("statements");
     }
     compileLet(): void {
-        this.startNonTerminalConstruct("letStatement");
+        this.writeConstructTagAndIndent("letStatement");
         while (this.input.hasMoreTokens()) { break; }
-        this.endNonTerminalConstruct("letStatement");
+        this.writeConstructTagAndDedent("letStatement");
     }
     compileIf(): void {
-        this.startNonTerminalConstruct("ifStatement");
+        this.writeConstructTagAndIndent("ifStatement");
         while (this.input.hasMoreTokens()) { break; }
-        this.endNonTerminalConstruct("ifStatement");
+        this.writeConstructTagAndDedent("ifStatement");
     }
     compileWhile(): void {
-        this.startNonTerminalConstruct("whileStatement");
+        this.writeConstructTagAndIndent("whileStatement");
         while (this.input.hasMoreTokens()) { break; }
-        this.endNonTerminalConstruct("whileStatement");
+        this.writeConstructTagAndDedent("whileStatement");
     }
     compileDo(): void {
-        this.startNonTerminalConstruct("doStatement");
+        this.writeConstructTagAndIndent("doStatement");
         while (this.input.hasMoreTokens()) { break; }
-        this.endNonTerminalConstruct("doStatement");
+        this.writeConstructTagAndDedent("doStatement");
     }
     compileReturn(): void {
-        this.startNonTerminalConstruct("returnStatement");
+        this.writeConstructTagAndIndent("returnStatement");
         while (this.input.hasMoreTokens()) { break; }
-        this.endNonTerminalConstruct("returnStatement");
+        this.writeConstructTagAndDedent("returnStatement");
     }
     compileExpression(): void {
-        this.startNonTerminalConstruct("expression");
+        this.writeConstructTagAndIndent("expression");
         while (this.input.hasMoreTokens()) { break; }
-        this.endNonTerminalConstruct("expression");
+        this.writeConstructTagAndDedent("expression");
     }
     compileTerm(): void {
-        this.startNonTerminalConstruct("term");
+        this.writeConstructTagAndIndent("term");
         while (this.input.hasMoreTokens()) { break; }
-        this.endNonTerminalConstruct("term");
+        this.writeConstructTagAndDedent("term");
     }
     compileExpressionList(): number {
-        this.startNonTerminalConstruct("expression list");
+        this.writeConstructTagAndIndent("expression list");
         while (this.input.hasMoreTokens()) { break; }
-        this.endNonTerminalConstruct("expression list");
+        this.writeConstructTagAndDedent("expression list");
         // TODO: change 0
         return 0;
     }
