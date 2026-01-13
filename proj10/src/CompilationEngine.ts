@@ -11,7 +11,7 @@ import { Keyword, TokenType } from './enums.js';
  */
 export default class CompilationEngine implements I_CompilationEngine {
     private xmlBody = "";
-    private indentLvl: number;
+    private _indentLvl: number;
     private readonly SPACES_PER_INDENT = 2;
 
     /**
@@ -22,7 +22,15 @@ export default class CompilationEngine implements I_CompilationEngine {
      * @param output output file path
      */
     constructor (private input: JackTokenizer, private output: string) {
-        this.indentLvl = 0;
+        this._indentLvl = 0;
+    }
+
+    /**
+     * 
+     * @returns true if current token is a symbol, else false
+     */
+    private isSymbol(): boolean {
+        return this.input.tokenType() === TokenType.SYMBOL;
     }
 
     /**
@@ -30,7 +38,7 @@ export default class CompilationEngine implements I_CompilationEngine {
      * @returns spaces
      */
     private getIndents(): string {
-        return " ".repeat(this.indentLvl * this.SPACES_PER_INDENT);
+        return " ".repeat(this._indentLvl * this.SPACES_PER_INDENT);
     }
 
     private writeToken() {
@@ -75,7 +83,7 @@ export default class CompilationEngine implements I_CompilationEngine {
      */
     private writeConstructTagAndIndent(construct: string) {
         this.writeTag(`<${construct}>`);
-        this.indentLvl += 1;
+        this._indentLvl += 1;
     }
 
     /**
@@ -83,7 +91,7 @@ export default class CompilationEngine implements I_CompilationEngine {
      * @param constructName The name of construct, eg., letStatement, varDec
      */
     private writeConstructTagAndDedent(constructName: string) {
-        this.indentLvl -= 1;
+        this._indentLvl -= 1;
         this.writeTag(`</${constructName}>`);
     }
 
@@ -139,8 +147,7 @@ export default class CompilationEngine implements I_CompilationEngine {
         while (this.input.hasMoreTokens()) {
             this.input.advance();
             this.writeToken();
-            const isSymbol = this.input.tokenType() === TokenType.SYMBOL;
-            if (isSymbol && this.input.symbol() === ';') break;
+            if (this.isSymbol() && this.input.symbol() === ';') break;
         }
         this.writeConstructTagAndDedent("classVarDec");
     }
@@ -272,8 +279,8 @@ export default class CompilationEngine implements I_CompilationEngine {
     compileIf(): void {
         this.writeConstructTagAndIndent("ifStatement");
         // Have to write statement keyword since it was looked ahead to get here
-        this.writeToken();
-
+        this.writeToken();  // if
+        // TODO: fix no break
         while (this.input.hasMoreTokens()) {
             this.input.advance();
             const kw = this.input.tokenType() === TokenType.KEYWORD &&
