@@ -80,12 +80,12 @@ export interface I_CompilationEngine {
      */
     compileVarDec(): void;
     /**
-     * Compiles a sequence of statements. Expects current token to be the first
-     * token of statement:
+     * Compiles a sequence of statements.
      * 
      * statement*
      * 
-     * where statement is: 
+     * Expects current token to be the first token of a statement where
+     * statement is: 
      * 
      * letStatement | ifStatement | whileStatement | doStatement |
      * returnStatement
