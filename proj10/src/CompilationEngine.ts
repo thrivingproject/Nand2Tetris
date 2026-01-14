@@ -106,13 +106,12 @@ export default class CompilationEngine implements I_CompilationEngine {
         ].includes(keyword);
     }
     /**
- * Advance input to next token and throw an error if it's not expected type.
- * @param expected expected token type
- */
-    private advanceAndExpect(expected: TokenType): void {
+     * Advance if there are more tokens, else throw error
+     * @param expected expected token type
+     */
+    private advanceInput(): void {
         if (this.input.hasMoreTokens()) this.input.advance();
-        else throw new Error(`Unexpected end of tokens. Expected ${expected}.`);
-        this.expectTokenType(expected);
+        else throw new Error("Unexpected end of tokens.");
     }
     /**
      * Throw error if current token type is not expected type
@@ -124,17 +123,40 @@ export default class CompilationEngine implements I_CompilationEngine {
             throw new Error(`Expected ${expected}, got ${currentType}`);
         }
     }
+
     /**
-     * Throw an error if the current token symbol is not the expected symbol.
-     * Should only be called if current token is a symbol.
+     * Throw an error if the current token is not a symbol or symbol is not the
+     * expected symbol. Can write token.
      * @param expected the symbol expected
+     * @param options write option
      */
-    private expectSymbol(expected: string) {
+    private expectSymbol(
+        expected?: string,
+        options?: { write: boolean; }
+    ): void {
+        const write = options?.write ?? false;
+        this.expectTokenType(TokenType.SYMBOL);
         const symbol = this.input.symbol();
-        if (symbol !== expected) {
+        if (expected !== undefined && symbol !== expected) {
             throw new Error(`Expected symbol '${expected}', got '${symbol}'`);
         }
+        if (write) this.writeToken();
     }
+    /**
+     * Throw an error if the current token is not a keyword or keyword is not
+     * the expected keyword. Can write token.
+     * @param expected expected keyword
+     * @param options write option
+     */
+    private expectKeyword(expected?: Keyword, options?: { write: boolean; }) {
+        const write = options?.write ?? false;
+        this.expectTokenType(TokenType.KEYWORD);
+        const kw = this.input.keyWord();
+        if (expected !== undefined && kw !== expected)
+            throw new Error(`Expected keyword '${expected}', got '${kw}'`);
+        if (write) this.writeToken();
+    }
+
 
     compileClass(): void {
         this.writeConstructTagAndIndent("class");
@@ -231,9 +253,7 @@ export default class CompilationEngine implements I_CompilationEngine {
                 } else throw new Error(`Bad keyword: ${kw}`);
             }
         }
-        this.expectTokenType(TokenType.SYMBOL);
-        this.expectSymbol('}');
-        this.writeToken();
+        this.expectSymbol('}', { write: true });
         this.writeConstructTagAndDedent("subroutineBody");
     }
     compileVarDec(): void {
@@ -319,8 +339,7 @@ export default class CompilationEngine implements I_CompilationEngine {
     }
     compileWhile(): void {
         this.writeConstructTagAndIndent("whileStatement");
-        // Have to write statement keyword since it was looked ahead to get here
-        this.writeToken();
+        this.expectKeyword(Keyword.WHILE, { write: true });
 
         while (this.input.hasMoreTokens()) {
             this.input.advance();
@@ -336,35 +355,43 @@ export default class CompilationEngine implements I_CompilationEngine {
     }
     compileDo(): void {
         this.writeConstructTagAndIndent("doStatement");
-        // Have to write statement keyword since it was looked ahead to get here
+        this.expectKeyword(Keyword.DO, { write: true });
+
+        // Needed to write either the subroutine name or the qualifier
+        this.advanceInput();
+        this.expectTokenType(TokenType.IDENTIFIER);
         this.writeToken();
 
-        while (this.input.hasMoreTokens()) {
-            this.input.advance();
+        // Expecting '.' or '(' since calls may or may not have a qualifier
+        this.advanceInput();
+        this.expectSymbol();
+
+        // Needed to handle subroutine calls that include a qualifier
+        if (this.input.symbol() === '.') {
+            this.writeToken();
+            this.advanceInput();
+            // Need to write subroutine name
+            this.expectTokenType(TokenType.IDENTIFIER);
+            this.writeToken();
+            this.advanceInput();
         }
+
+        // '(' Expected in both cases
+        this.expectSymbol('(', { write: true });
+        this.compileExpressionList();
+        this.expectSymbol(')', { write: true });
+        this.advanceInput();
+        this.expectSymbol(';', { write: true });
         this.writeConstructTagAndDedent("doStatement");
     }
     compileReturn(): void {
         this.writeConstructTagAndIndent("returnStatement");
-        // Have to write statement keyword since it was looked ahead to get here
-        this.writeToken();  // 'return'
-
-        if (this.input.hasMoreTokens()) this.input.advance();
-        else throw new Error("expression or ';'.");
-
+        this.expectKeyword(Keyword.RETURN, { write: true });
+        this.advanceInput();
         if (this.input.tokenType() !== TokenType.SYMBOL) {
             this.compileExpression();
         }
-
-        // Call again since we may have advanced in compileExpression
-        const tType = this.input.tokenType();
-        if (tType !== TokenType.SYMBOL) {
-            throw new Error(`Expected symbol, got ${tType}`);
-        }
-        const symbol = this.input.symbol();
-        if (symbol !== ';') throw new Error(`Expected ';', got ${symbol}`);
-        this.writeToken();
-
+        this.expectSymbol(';', { write: true });
         this.writeConstructTagAndDedent("returnStatement");
     }
     compileExpression(): void {
