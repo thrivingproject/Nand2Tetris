@@ -96,14 +96,16 @@ export default class CompilationEngine implements I_CompilationEngine {
      * @returns true if current token is 'let', 'if', 'while', 'do', or
      * 'return', else false
      */
-    private kwBelongsToStatement(keyword: Keyword) {
-        return [
+    private curTokenIsStatementKeyword() {
+        const kw = this.input.tokenType() === TokenType.KEYWORD &&
+            this.input.keyWord();
+        return kw && [
             Keyword.LET,
             Keyword.IF,
             Keyword.WHILE,
             Keyword.DO,
             Keyword.RETURN,
-        ].includes(keyword);
+        ].includes(kw);
     }
     /**
      * Advance if there are more tokens, else throw error
@@ -237,21 +239,16 @@ export default class CompilationEngine implements I_CompilationEngine {
     }
     compileSubroutineBody(): void {
         this.writeConstructTagAndIndent("subroutineBody");
-        while (this.input.hasMoreTokens()) {
-            this.input.advance();
-            const tokenType = this.input.tokenType();
-            if (tokenType === TokenType.SYMBOL) {
-                if (this.input.symbol() === '}') break;
-                this.writeToken();
-            } else if (tokenType === TokenType.KEYWORD) {
-                const kw = this.input.keyWord();
-                if (kw === Keyword.VAR) this.compileVarDec();
-                else if (this.kwBelongsToStatement(kw)) {
-                    this.compileStatements();
-                    // Expect bracket here since compileStatements looks ahead
-                    break;
-                } else throw new Error(`Bad keyword: ${kw}`);
-            }
+        this.expectSymbol('{', { write: true });
+        this.advanceInput();
+        while (
+            this.input.tokenType() === TokenType.KEYWORD &&
+            this.input.keyWord() === Keyword.VAR
+        ) {
+            this.compileClassVarDec();
+        }
+        if (this.curTokenIsStatementKeyword()) {
+            this.compileStatements();
         }
         this.expectSymbol('}', { write: true });
         this.writeConstructTagAndDedent("subroutineBody");
@@ -276,11 +273,8 @@ export default class CompilationEngine implements I_CompilationEngine {
     }
     compileStatements(): void {
         this.writeConstructTagAndIndent("statements");
-        // do-while since look ahead used to get here
-        do {
-            // Use var so it's in scope within condition check
-            var kw = this.input.keyWord();
-            switch (kw) {
+        while (this.curTokenIsStatementKeyword()) {
+            switch (this.input.keyWord()) {
                 case Keyword.LET:
                     this.compileLet();
                     break;
@@ -297,12 +291,8 @@ export default class CompilationEngine implements I_CompilationEngine {
                     this.compileDo();
                     break;
             }
-            if (this.input.hasMoreTokens()) this.input.advance();
-            else throw new Error("Unexpected end of tokens.");
-        } while (
-            this.input.tokenType() === TokenType.KEYWORD &&
-            this.kwBelongsToStatement(kw)
-        );
+            this.advanceInput();
+        }
         this.writeConstructTagAndDedent("statements");
     }
     compileLet(): void {
@@ -324,16 +314,28 @@ export default class CompilationEngine implements I_CompilationEngine {
     }
     compileIf(): void {
         this.writeConstructTagAndIndent("ifStatement");
-        // Have to write statement keyword since it was looked ahead to get here
-        this.writeToken();  // if
-        // TODO: fix no break
-        while (this.input.hasMoreTokens()) {
-            this.input.advance();
-            const kw = this.input.tokenType() === TokenType.KEYWORD &&
-                this.input.keyWord();
-            if (kw && this.kwBelongsToStatement(kw)) {
-                this.compileStatements();
-            } else this.writeToken();
+        this.expectKeyword(Keyword.IF, { write: true });
+        this.advanceInput();
+        this.expectSymbol('(', { write: true });
+        this.advanceInput();
+        this.writeToken();  // expression
+        this.advanceInput();
+        this.expectSymbol(')', { write: true });
+        this.advanceInput();
+        this.expectSymbol('{', { write: true });
+        this.advanceInput();
+        if (this.curTokenIsStatementKeyword()) this.compileStatements();
+        this.expectSymbol('}', { write: true });
+        this.advanceInput();
+        if (
+            this.input.tokenType() === TokenType.KEYWORD &&
+            this.input.keyWord() === Keyword.ELSE
+        ) {
+            this.writeToken();
+            this.advanceInput();
+            this.expectSymbol('{', { write: true });
+            if (this.curTokenIsStatementKeyword()) this.compileStatements();
+            this.expectSymbol('}', { write: true });
         }
         this.writeConstructTagAndDedent("ifStatement");
     }
@@ -348,7 +350,7 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.advanceInput();
         this.expectSymbol('{', { write: true });
         this.advanceInput();
-        this.compileStatements();
+        if (this.curTokenIsStatementKeyword()) this.compileStatements();
         this.expectSymbol('}', { write: true });
         this.writeConstructTagAndDedent("whileStatement");
     }
