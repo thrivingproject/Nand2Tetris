@@ -333,12 +333,12 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.expectSymbol();
         if (this.input.symbol() === '[') {
             this.writeToken(); this.advanceInput();  // write the '['
-            this.writeToken(); this.advanceInput();  // TODO compileExpression
+            this.compileExpression();
             this.expectSymbol(']', { write: true });
         }
         this.expectSymbol('=', { write: true });
         this.advanceInput();
-        this.writeToken(); this.advanceInput();  // TODO compileExpression
+        this.compileExpression();
         this.expectSymbol(';', { write: true });
         this.advanceInput();
         this.writeConstructTagAndDedent("letStatement");
@@ -378,7 +378,7 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.advanceInput();
         this.expectSymbol('(', { write: true });
         this.advanceInput();
-        this.writeToken(); this.advanceInput();  // TODO: writeExpression
+        this.compileExpression();
         this.expectSymbol(')', { write: true });
         this.advanceInput();
         this.expectSymbol('{', { write: true });
@@ -427,15 +427,16 @@ export default class CompilationEngine implements I_CompilationEngine {
             this.input.tokenType() !== TokenType.SYMBOL &&
             this.input.symbol() !== ';'
         ) {
-            this.writeToken(); this.advanceInput();  // TODO: writeExpression
+            this.compileExpression();
         }
         this.expectSymbol(';', { write: true });
         this.advanceInput();
         this.writeConstructTagAndDedent("returnStatement");
     }
     compileExpression(): void {
-        throw new Error("Not yet implemented");
         this.writeConstructTagAndIndent("expression");
+        this.writeToken();
+        this.advanceInput();
         this.writeConstructTagAndDedent("expression");
     }
     compileTerm(): void {
@@ -448,9 +449,8 @@ export default class CompilationEngine implements I_CompilationEngine {
         let count = 0;
         if (this.input.tokenType() !== TokenType.SYMBOL) {
 
-            this.writeToken();  // TODO compileExpression
+            this.compileExpression();
             count++;
-            this.advanceInput();
 
             while (
                 this.input.tokenType() === TokenType.SYMBOL &&
@@ -458,9 +458,8 @@ export default class CompilationEngine implements I_CompilationEngine {
             ) {
                 this.writeToken();
                 this.advanceInput();
-                this.writeToken();  // TODO compileExpression
+                this.compileExpression();
                 count++;
-                this.advanceInput();
             }
         }
         this.writeConstructTagAndDedent("expression list");
