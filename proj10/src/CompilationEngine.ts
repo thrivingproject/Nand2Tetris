@@ -198,9 +198,11 @@ export default class CompilationEngine implements I_CompilationEngine {
                 default:
                     throw new Error(`Unexpected keyword in class: ${kw}`);
             }
-            this.input.advance();
         }
         this.expectSymbol('}', { write: true });
+        if (this.input.hasMoreTokens()) {
+            throw new Error("Expected EOF.");
+        }
         this.writeConstructTagAndDedent("class");
         fs.writeFileSync(this.output, this.xmlBody);
     }
@@ -222,6 +224,7 @@ export default class CompilationEngine implements I_CompilationEngine {
             this.advanceInput();
         }
         this.expectSymbol(';', { write: true });
+        this.advanceInput();
         this.writeConstructTagAndDedent("classVarDec");
     }
     compileSubroutineDec(): void {
@@ -250,10 +253,13 @@ export default class CompilationEngine implements I_CompilationEngine {
     }
     compileParameterList(): void {
         this.writeConstructTagAndIndent("parameterList");
-        while (
-            this.input.tokenType() !== TokenType.SYMBOL &&
-            this.input.symbol() !== ')'
-        ) {
+        while (true) {
+            if (
+                this.input.tokenType() === TokenType.SYMBOL &&
+                this.input.symbol() === ')'
+            ) {
+                break;
+            }
             this.writeToken();
             this.advanceInput();
         }
@@ -267,7 +273,7 @@ export default class CompilationEngine implements I_CompilationEngine {
             this.input.tokenType() === TokenType.KEYWORD &&
             this.input.keyWord() === Keyword.VAR
         ) {
-            this.compileClassVarDec();
+            this.compileVarDec();
         }
         if (this.curTokenIsStatementKeyword()) {
             this.compileStatements();
@@ -320,7 +326,6 @@ export default class CompilationEngine implements I_CompilationEngine {
                     this.compileDo();
                     break;
             }
-            this.advanceInput();
         }
         this.writeConstructTagAndDedent("statements");
     }
@@ -328,13 +333,17 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.writeConstructTagAndIndent("letStatement");
         this.expectKeyword(Keyword.LET, { write: true });
         this.advanceInput();
-        while (
-            this.input.tokenType() !== TokenType.SYMBOL &&
-            this.input.symbol() !== ';'
-        ) {
-            this.writeToken();
-            this.advanceInput();
+        this.expectIdentifier({ write: true });
+        this.advanceInput();
+        this.expectSymbol();
+        if (this.input.symbol() === '[') {
+            this.writeToken(); this.advanceInput();  // write the '['
+            this.writeToken(); this.advanceInput();  // TODO compileExpression
+            this.expectSymbol(']', { write: true });
         }
+        this.expectSymbol('=', { write: true });
+        this.advanceInput();
+        this.writeToken(); this.advanceInput();  // TODO compileExpression
         this.expectSymbol(';', { write: true });
         this.advanceInput();
         this.writeConstructTagAndDedent("letStatement");
@@ -361,8 +370,10 @@ export default class CompilationEngine implements I_CompilationEngine {
             this.writeToken();
             this.advanceInput();
             this.expectSymbol('{', { write: true });
+            this.advanceInput();
             if (this.curTokenIsStatementKeyword()) this.compileStatements();
             this.expectSymbol('}', { write: true });
+            this.advanceInput();
         }
         this.writeConstructTagAndDedent("ifStatement");
     }
@@ -379,6 +390,7 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.advanceInput();
         if (this.curTokenIsStatementKeyword()) this.compileStatements();
         this.expectSymbol('}', { write: true });
+        this.advanceInput();
         this.writeConstructTagAndDedent("whileStatement");
     }
     compileDo(): void {
@@ -404,10 +416,12 @@ export default class CompilationEngine implements I_CompilationEngine {
 
         // '(' Expected in both cases
         this.expectSymbol('(', { write: true });
+        this.advanceInput();
         this.compileExpressionList();
         this.expectSymbol(')', { write: true });
         this.advanceInput();
         this.expectSymbol(';', { write: true });
+        this.advanceInput();
         this.writeConstructTagAndDedent("doStatement");
     }
     compileReturn(): void {
@@ -421,6 +435,7 @@ export default class CompilationEngine implements I_CompilationEngine {
             this.writeToken(); this.advanceInput();  // TODO: writeExpression
         }
         this.expectSymbol(';', { write: true });
+        this.advanceInput();
         this.writeConstructTagAndDedent("returnStatement");
     }
     compileExpression(): void {
