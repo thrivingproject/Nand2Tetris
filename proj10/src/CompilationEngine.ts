@@ -434,8 +434,26 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.writeConstructTagAndDedent("term");
     }
     compileExpressionList(): number {
-        throw new Error("Not yet implemented");
         this.writeConstructTagAndIndent("expression list");
+        let count = 0;
+        if (this.input.tokenType() !== TokenType.SYMBOL) {
+
+            this.writeToken();  // TODO compileExpression
+            count++;
+            this.advanceInput();
+
+            while (
+                this.input.tokenType() === TokenType.SYMBOL &&
+                this.input.symbol() === ','
+            ) {
+                this.writeToken();
+                this.advanceInput();
+                this.writeToken();  // TODO compileExpression
+                count++;
+                this.advanceInput();
+            }
+        }
         this.writeConstructTagAndDedent("expression list");
+        return count;
     }
 }
