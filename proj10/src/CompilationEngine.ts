@@ -87,22 +87,6 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.xmlBody += `${this.getIndents()}${tag}\n`;
     }
     /**
-     * Determine if the keyword begins a statement construct.
-     * @returns true if current token is 'let', 'if', 'while', 'do', or
-     * 'return', else false
-     */
-    private curTokenIsStatementKeyword() {
-        const kw = this.input.tokenType() === TokenType.KEYWORD &&
-            this.input.keyWord();
-        return kw && [
-            Keyword.LET,
-            Keyword.IF,
-            Keyword.WHILE,
-            Keyword.DO,
-            Keyword.RETURN,
-        ].includes(kw);
-    }
-    /**
      * Advance if there are more tokens, else throw error
      * @param expected expected token type
      */
