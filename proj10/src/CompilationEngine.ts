@@ -240,12 +240,7 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.advanceInput();
         this.expectSymbol('(', { write: true });
         this.advanceInput();
-        if (
-            this.input.tokenType() !== TokenType.SYMBOL ||
-            this.input.symbol() !== ')'
-        ) {
-            this.compileParameterList();
-        }
+        this.compileParameterList();
         this.expectSymbol(')', { write: true });
         this.advanceInput();
         this.compileSubroutineBody();
