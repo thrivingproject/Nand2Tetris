@@ -26,14 +26,6 @@ export default class CompilationEngine implements I_CompilationEngine {
     }
 
     /**
-     * 
-     * @returns true if current token is a symbol, else false
-     */
-    private isSymbol(): boolean {
-        return this.input.tokenType() === TokenType.SYMBOL;
-    }
-
-    /**
      * Get current indentation spaces.
      * @returns spaces
      */
@@ -113,6 +105,36 @@ export default class CompilationEngine implements I_CompilationEngine {
             Keyword.RETURN,
         ].includes(keyword);
     }
+    /**
+ * Advance input to next token and throw an error if it's not expected type.
+ * @param expected expected token type
+ */
+    private advanceAndExpect(expected: TokenType): void {
+        if (this.input.hasMoreTokens()) this.input.advance();
+        else throw new Error(`Unexpected end of tokens. Expected ${expected}.`);
+        this.expectTokenType(expected);
+    }
+    /**
+     * Throw error if current token type is not expected type
+     * @param expected expected token type
+     */
+    private expectTokenType(expected: TokenType): void {
+        const currentType = this.input.tokenType();
+        if (this.input.tokenType() !== expected) {
+            throw new Error(`Expected ${expected}, got ${currentType}`);
+        }
+    }
+    /**
+     * Throw an error if the current token symbol is not the expected symbol.
+     * Should only be called if current token is a symbol.
+     * @param expected the symbol expected
+     */
+    private expectSymbol(expected: string) {
+        const symbol = this.input.symbol();
+        if (symbol !== expected) {
+            throw new Error(`Expected symbol '${expected}', got '${symbol}'`);
+        }
+    }
 
     compileClass(): void {
         this.writeConstructTagAndIndent("class");
@@ -147,7 +169,12 @@ export default class CompilationEngine implements I_CompilationEngine {
         while (this.input.hasMoreTokens()) {
             this.input.advance();
             this.writeToken();
-            if (this.isSymbol() && this.input.symbol() === ';') break;
+            if (
+                this.input.tokenType() === TokenType.SYMBOL &&
+                this.input.symbol() === ';'
+            ) {
+                break;
+            };
         }
         this.writeConstructTagAndDedent("classVarDec");
     }
@@ -204,9 +231,8 @@ export default class CompilationEngine implements I_CompilationEngine {
                 } else throw new Error(`Bad keyword: ${kw}`);
             }
         }
-        const endBracket = this.input.tokenType() === TokenType.SYMBOL &&
-            this.input.symbol() === '}';
-        if (!endBracket) throw new Error("Expected '}'.");
+        this.expectTokenType(TokenType.SYMBOL);
+        this.expectSymbol('}');
         this.writeToken();
         this.writeConstructTagAndDedent("subroutineBody");
     }
