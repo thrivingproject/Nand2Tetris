@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import type { I_CompilationEngine } from "./interfaces.js";
 import type JackTokenizer from "./JackTokenizer.js";
-import { Keyword, TokenType } from './enums.js';
+import { Keyword, TokenType, statementKeywords } from './enums.js';
 
 /**
  * Gets its input from a JackTokenizer, and emits its output to an output file,
@@ -270,9 +270,7 @@ export default class CompilationEngine implements I_CompilationEngine {
         ) {
             this.compileVarDec();
         }
-        if (this.curTokenIsStatementKeyword()) {
-            this.compileStatements();
-        }
+        this.compileStatements();
         this.expectSymbol('}', { write: true });
         this.advanceInput();
         this.writeConstructTagAndDedent("subroutineBody");
@@ -300,10 +298,10 @@ export default class CompilationEngine implements I_CompilationEngine {
     }
     compileStatements(): void {
         this.writeConstructTagAndIndent("statements");
-        if (!this.curTokenIsStatementKeyword()) {
-            throw new Error("Expected statement keyword.");
-        }
-        while (this.curTokenIsStatementKeyword()) {
+        while (
+            this.input.tokenType() === TokenType.KEYWORD &&
+            statementKeywords.includes(this.input.keyWord())
+        ) {
             switch (this.input.keyWord()) {
                 case Keyword.LET:
                     this.compileLet();
@@ -354,7 +352,7 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.advanceInput();
         this.expectSymbol('{', { write: true });
         this.advanceInput();
-        if (this.curTokenIsStatementKeyword()) this.compileStatements();
+        this.compileStatements();
         this.expectSymbol('}', { write: true });
         this.advanceInput();
         if (
@@ -365,7 +363,7 @@ export default class CompilationEngine implements I_CompilationEngine {
             this.advanceInput();
             this.expectSymbol('{', { write: true });
             this.advanceInput();
-            if (this.curTokenIsStatementKeyword()) this.compileStatements();
+            this.compileStatements();
             this.expectSymbol('}', { write: true });
             this.advanceInput();
         }
@@ -382,7 +380,7 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.advanceInput();
         this.expectSymbol('{', { write: true });
         this.advanceInput();
-        if (this.curTokenIsStatementKeyword()) this.compileStatements();
+        this.compileStatements();
         this.expectSymbol('}', { write: true });
         this.advanceInput();
         this.writeConstructTagAndDedent("whileStatement");
@@ -434,13 +432,13 @@ export default class CompilationEngine implements I_CompilationEngine {
     }
     compileExpression(): void {
         this.writeConstructTagAndIndent("expression");
-        this.writeToken();
-        this.advanceInput();
+        this.compileTerm();
         this.writeConstructTagAndDedent("expression");
     }
     compileTerm(): void {
-        throw new Error("Not yet implemented");
         this.writeConstructTagAndIndent("term");
+        this.writeToken();
+        this.advanceInput();
         this.writeConstructTagAndDedent("term");
     }
     compileExpressionList(): number {
@@ -461,7 +459,7 @@ export default class CompilationEngine implements I_CompilationEngine {
                 count++;
             }
         }
-        this.writeConstructTagAndDedent("expression list");
+        this.writeConstructTagAndDedent("expressionList");
         return count;
     }
 }

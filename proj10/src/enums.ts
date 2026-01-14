@@ -34,6 +34,14 @@ export const enum Keyword {
     THIS = "this"
 }
 
+export const statementKeywords = [
+    Keyword.LET,
+    Keyword.IF,
+    Keyword.WHILE,
+    Keyword.DO,
+    Keyword.RETURN,
+];
+
 export const keywords = new Map([
     ["class", Keyword.CLASS],
     ["method", Keyword.METHOD],
