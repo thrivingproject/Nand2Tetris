@@ -372,7 +372,7 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.advanceInput();
         this.expectSymbol('(', { write: true });
         this.advanceInput();
-        this.compileExpression();
+        this.writeToken(); this.advanceInput();  // TODO: writeExpression
         this.expectSymbol(')', { write: true });
         this.advanceInput();
         this.expectSymbol('{', { write: true });
@@ -414,28 +414,28 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.writeConstructTagAndIndent("returnStatement");
         this.expectKeyword(Keyword.RETURN, { write: true });
         this.advanceInput();
-        if (this.input.tokenType() !== TokenType.SYMBOL) {
-            this.compileExpression();
+        if (
+            this.input.tokenType() !== TokenType.SYMBOL &&
+            this.input.symbol() !== ';'
+        ) {
+            this.writeToken(); this.advanceInput();  // TODO: writeExpression
         }
         this.expectSymbol(';', { write: true });
         this.writeConstructTagAndDedent("returnStatement");
     }
     compileExpression(): void {
-        // TODO: implement later
+        throw new Error("Not yet implemented");
         this.writeConstructTagAndIndent("expression");
-        while (this.input.hasMoreTokens()) { break; }
         this.writeConstructTagAndDedent("expression");
     }
     compileTerm(): void {
+        throw new Error("Not yet implemented");
         this.writeConstructTagAndIndent("term");
-        while (this.input.hasMoreTokens()) { break; }
         this.writeConstructTagAndDedent("term");
     }
     compileExpressionList(): number {
+        throw new Error("Not yet implemented");
         this.writeConstructTagAndIndent("expression list");
-        while (this.input.hasMoreTokens()) { break; }
         this.writeConstructTagAndDedent("expression list");
-        // TODO: change 0
-        return 0;
     }
 }
