@@ -139,17 +139,29 @@ export default class CompilationEngine implements I_CompilationEngine {
         if (write) this.writeToken();
     }
     /**
-     * Throw an error if the current token is not a keyword or keyword is not
-     * the expected keyword. Can write token.
+     * First check if current token is a Keyword and throw error if not. Then,
+     * if expected is an array, check if the current token is one of the
+     * keywords in the array; otherwise, check if the current token is the
+     * provided Keyword.
      * @param expected expected keyword
      * @param options write option
      */
-    private expectKeyword(expected?: Keyword, options?: { write: boolean; }) {
+    private expectKeyword(
+        expected?: Keyword | Keyword[],
+        options?: { write: boolean; }
+    ) {
         const write = options?.write ?? false;
         this._expectTokenType(TokenType.KEYWORD);
-        const kw = this.input.keyWord();
-        if (expected !== undefined && kw !== expected)
-            throw new Error(`Expected keyword '${expected}', got '${kw}'`);
+        if (expected !== undefined) {
+            const kw = this.input.keyWord();
+            const isArr = Array.isArray(expected);
+            if (
+                (isArr && !expected.includes(kw)) ||
+                (!isArr && expected !== kw)
+            ) {
+                throw new Error(`Expected keyword '${expected}', got '${kw}'`);
+            }
+        }
         if (write) this.writeToken();
     }
     /**
@@ -164,12 +176,16 @@ export default class CompilationEngine implements I_CompilationEngine {
 
     compileClass(): void {
         this.writeConstructTagAndIndent("class");
-        while (this.input.hasMoreTokens()) {
-            this.input.advance();
-            // Needed to write variable and subroutine declarations
-            const keyword = this.input.tokenType() === TokenType.KEYWORD
-                && this.input.keyWord();
-            switch (keyword) {
+        this.advanceInput();
+        this.expectKeyword(Keyword.CLASS, { write: true });
+        this.advanceInput();
+        this.expectIdentifier({ write: true });
+        this.advanceInput();
+        this.expectSymbol('{', { write: true });
+        this.advanceInput();
+        while (this.input.tokenType() === TokenType.KEYWORD) {
+            const kw = this.input.keyWord();
+            switch (kw) {
                 case Keyword.STATIC:
                 case Keyword.FIELD:
                     this.compileClassVarDec();
@@ -180,62 +196,66 @@ export default class CompilationEngine implements I_CompilationEngine {
                     this.compileSubroutineDec();
                     break;
                 default:
-                    // Needed to Write 'class', className and brackets
-                    this.writeToken();
-                    break;
+                    throw new Error(`Unexpected keyword in class: ${kw}`);
             }
+            this.input.advance();
         }
+        this.expectSymbol('}', { write: true });
         this.writeConstructTagAndDedent("class");
         fs.writeFileSync(this.output, this.xmlBody);
     }
     compileClassVarDec(): void {
         this.writeConstructTagAndIndent("classVarDec");
-        // Needed to write 'static' or 'field' token advanced to in compileClass
-        this.writeToken();
-        while (this.input.hasMoreTokens()) {
-            this.input.advance();
+        this.expectKeyword([Keyword.STATIC, Keyword.FIELD], { write: true });
+        this.advanceInput();
+        this.writeToken();  // type
+        this.advanceInput();
+        this.expectIdentifier({ write: true });  // varName
+        this.advanceInput();
+        while (
+            this.input.tokenType() === TokenType.SYMBOL
+            && this.input.symbol() === ','
+        ) {
             this.writeToken();
-            if (
-                this.input.tokenType() === TokenType.SYMBOL &&
-                this.input.symbol() === ';'
-            ) {
-                break;
-            };
+            this.advanceInput();
+            this.expectIdentifier({ write: true });  // varName
+            this.advanceInput();
         }
+        this.expectSymbol(';', { write: true });
         this.writeConstructTagAndDedent("classVarDec");
     }
     compileSubroutineDec(): void {
         this.writeConstructTagAndIndent("subroutineDec");
-        // Needed to write token advanced to in compileClass
-        this.writeToken();
-        while (this.input.hasMoreTokens()) {
-            this.input.advance();
-            this.writeToken();
-            if (this.input.tokenType() === TokenType.SYMBOL) {
-                if (this.input.symbol() === '(') {
-                    this.compileParameterList();
-                    // Should be `)` since we advanced in `compileParameterList`
-                    this.writeToken();
-                    this.compileSubroutineBody();
-                    // Break since `compileSubroutineBody` writes the brackets
-                    break;
-                }
-            }
+        this.expectKeyword(
+            [Keyword.CONSTRUCTOR, Keyword.FUNCTION, Keyword.METHOD],
+            { write: true }
+        );
+        this.advanceInput();
+        this.writeToken();  // ('void' | type)
+        this.advanceInput();
+        this.expectIdentifier({ write: true });  // subroutineName
+        this.advanceInput();
+        this.expectSymbol('(', { write: true });
+        this.advanceInput();
+        if (
+            this.input.tokenType() !== TokenType.SYMBOL ||
+            this.input.symbol() !== ')'
+        ) {
+            this.compileParameterList();
         }
+        this.expectSymbol(')', { write: true });
+        this.advanceInput();
+        this.compileSubroutineBody();
         this.writeConstructTagAndDedent("subroutineDec");
     }
     compileParameterList(): void {
         this.writeConstructTagAndIndent("parameterList");
-        while (this.input.hasMoreTokens()) {
-            this.input.advance();
-            // Needed so `)` is written in `compileSubroutineDec`
-            if (
-                this.input.tokenType() === TokenType.SYMBOL &&
-                this.input.symbol() === ')'
-            ) {
-                break;
-            }
+        while (
+            this.input.tokenType() !== TokenType.SYMBOL &&
+            this.input.symbol() !== ')'
+        ) {
             this.writeToken();
+            this.advanceInput();
         }
         this.writeConstructTagAndDedent("parameterList");
     }
@@ -253,28 +273,35 @@ export default class CompilationEngine implements I_CompilationEngine {
             this.compileStatements();
         }
         this.expectSymbol('}', { write: true });
+        this.advanceInput();
         this.writeConstructTagAndDedent("subroutineBody");
     }
     compileVarDec(): void {
         this.writeConstructTagAndIndent("varDec");
-        // Needed to write 'var' token advanced to in `compileSubroutineBody`
-        this.writeToken();
-
-        while (this.input.hasMoreTokens()) {
-            this.input.advance();
+        this.expectKeyword(Keyword.VAR, { write: true });
+        this.advanceInput();
+        this.writeToken();  // type
+        this.advanceInput();
+        this.writeToken();  // varName
+        this.advanceInput();
+        while (
+            this.input.tokenType() === TokenType.SYMBOL &&
+            this.input.symbol() === ','
+        ) {
             this.writeToken();
-            // Need to break after writing semi-colon
-            if (
-                this.input.tokenType() === TokenType.SYMBOL &&
-                this.input.symbol() === ';'
-            ) {
-                break;
-            }
+            this.advanceInput();
+            this.writeToken();  // varName
+            this.advanceInput();
         }
+        this.expectSymbol(';', { write: true });
+        this.advanceInput();
         this.writeConstructTagAndDedent("varDec");
     }
     compileStatements(): void {
         this.writeConstructTagAndIndent("statements");
+        if (!this.curTokenIsStatementKeyword()) {
+            throw new Error("Expected statement keyword.");
+        }
         while (this.curTokenIsStatementKeyword()) {
             switch (this.input.keyWord()) {
                 case Keyword.LET:
@@ -299,19 +326,17 @@ export default class CompilationEngine implements I_CompilationEngine {
     }
     compileLet(): void {
         this.writeConstructTagAndIndent("letStatement");
-        // Have to write statement keyword since it was looked ahead to get here
-        this.writeToken();
-
-        while (this.input.hasMoreTokens()) {
-            this.input.advance();
+        this.expectKeyword(Keyword.LET, { write: true });
+        this.advanceInput();
+        while (
+            this.input.tokenType() !== TokenType.SYMBOL &&
+            this.input.symbol() !== ';'
+        ) {
             this.writeToken();
-            if (
-                this.input.tokenType() === TokenType.SYMBOL &&
-                this.input.symbol() === ';'
-            ) {
-                break;
-            }
+            this.advanceInput();
         }
+        this.expectSymbol(';', { write: true });
+        this.advanceInput();
         this.writeConstructTagAndDedent("letStatement");
     }
     compileIf(): void {
