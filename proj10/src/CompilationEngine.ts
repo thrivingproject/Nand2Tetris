@@ -32,7 +32,6 @@ export default class CompilationEngine implements I_CompilationEngine {
     private getIndents(): string {
         return " ".repeat(this._indentLvl * this.SPACES_PER_INDENT);
     }
-
     private writeToken() {
         let token: Keyword | string;
         let tag: string;
@@ -68,7 +67,6 @@ export default class CompilationEngine implements I_CompilationEngine {
         }
         this.xmlBody += `${this.getIndents()}<${tag}> ${token} </${tag}>\n`;
     }
-
     /**
      * Write the tag of the construct, add indent level
      * @param construct The name of construct, eg., classVarDec, parameterList
@@ -77,7 +75,6 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.writeTag(`<${construct}>`);
         this._indentLvl += 1;
     }
-
     /**
      * Write the end tag of the construct, decrease indent level
      * @param constructName The name of construct, eg., letStatement, varDec
@@ -86,11 +83,9 @@ export default class CompilationEngine implements I_CompilationEngine {
         this._indentLvl -= 1;
         this.writeTag(`</${constructName}>`);
     }
-
     private writeTag(tag: string) {
         this.xmlBody += `${this.getIndents()}${tag}\n`;
     }
-
     /**
      * Determine if the keyword begins a statement construct.
      * @returns true if current token is 'let', 'if', 'while', 'do', or
@@ -119,13 +114,12 @@ export default class CompilationEngine implements I_CompilationEngine {
      * Throw error if current token type is not expected type
      * @param expected expected token type
      */
-    private expectTokenType(expected: TokenType): void {
+    private _expectTokenType(expected: TokenType): void {
         const currentType = this.input.tokenType();
         if (this.input.tokenType() !== expected) {
             throw new Error(`Expected ${expected}, got ${currentType}`);
         }
     }
-
     /**
      * Throw an error if the current token is not a symbol or symbol is not the
      * expected symbol. Can write token.
@@ -137,7 +131,7 @@ export default class CompilationEngine implements I_CompilationEngine {
         options?: { write: boolean; }
     ): void {
         const write = options?.write ?? false;
-        this.expectTokenType(TokenType.SYMBOL);
+        this._expectTokenType(TokenType.SYMBOL);
         const symbol = this.input.symbol();
         if (expected !== undefined && symbol !== expected) {
             throw new Error(`Expected symbol '${expected}', got '${symbol}'`);
@@ -152,10 +146,18 @@ export default class CompilationEngine implements I_CompilationEngine {
      */
     private expectKeyword(expected?: Keyword, options?: { write: boolean; }) {
         const write = options?.write ?? false;
-        this.expectTokenType(TokenType.KEYWORD);
+        this._expectTokenType(TokenType.KEYWORD);
         const kw = this.input.keyWord();
         if (expected !== undefined && kw !== expected)
             throw new Error(`Expected keyword '${expected}', got '${kw}'`);
+        if (write) this.writeToken();
+    }
+    /**
+     * Throw an error if the current token is not an identifier.
+     */
+    private expectIdentifier(options?: { write: boolean; }) {
+        this._expectTokenType(TokenType.IDENTIFIER);
+        const write = options?.write ?? false;
         if (write) this.writeToken();
     }
 
@@ -360,8 +362,7 @@ export default class CompilationEngine implements I_CompilationEngine {
 
         // Needed to write either the subroutine name or the qualifier
         this.advanceInput();
-        this.expectTokenType(TokenType.IDENTIFIER);
-        this.writeToken();
+        this.expectIdentifier({ write: true });
 
         // Expecting '.' or '(' since calls may or may not have a qualifier
         this.advanceInput();
@@ -372,8 +373,7 @@ export default class CompilationEngine implements I_CompilationEngine {
             this.writeToken();
             this.advanceInput();
             // Need to write subroutine name
-            this.expectTokenType(TokenType.IDENTIFIER);
-            this.writeToken();
+            this.expectIdentifier({ write: true });
             this.advanceInput();
         }
 
