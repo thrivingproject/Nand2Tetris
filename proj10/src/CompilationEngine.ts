@@ -111,13 +111,22 @@ export default class CompilationEngine implements I_CompilationEngine {
      * @param options write option
      */
     private expectSymbol(
-        expected?: string,
+        expected?: string | string[],
         options?: { write: boolean; }
     ): void {
         const write = options?.write ?? false;
         this._expectTokenType(TokenType.SYMBOL);
-        const symbol = this.input.symbol();
-        if (expected !== undefined && symbol !== expected) {
+        if (expected !== undefined) {
+            const symbol = this.input.symbol();
+            const isArr = Array.isArray(expected);
+            if (
+                (isArr && !expected.includes(symbol)) ||
+                (!isArr && expected !== symbol)
+            ) {
+                throw new Error(
+                    `Expected keyword '${expected}', got '${symbol}'`
+                );
+            }
             throw new Error(`Expected symbol '${expected}', got '${symbol}'`);
         }
         if (write) this.writeToken();
