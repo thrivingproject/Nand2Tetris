@@ -340,17 +340,16 @@ export default class CompilationEngine implements I_CompilationEngine {
     compileWhile(): void {
         this.writeConstructTagAndIndent("whileStatement");
         this.expectKeyword(Keyword.WHILE, { write: true });
-
-        while (this.input.hasMoreTokens()) {
-            this.input.advance();
-            const tType = this.input.tokenType();
-            const kw = tType === TokenType.KEYWORD && this.input.keyWord();
-            const closingBracket = tType === TokenType.SYMBOL &&
-                this.input.symbol() === '}';
-            if (kw && this.kwBelongsToStatement(kw)) this.compileStatements();
-            else this.writeToken();
-            if (closingBracket) break;
-        }
+        this.advanceInput();
+        this.expectSymbol('(', { write: true });
+        this.advanceInput();
+        this.compileExpression();
+        this.expectSymbol(')', { write: true });
+        this.advanceInput();
+        this.expectSymbol('{', { write: true });
+        this.advanceInput();
+        this.compileStatements();
+        this.expectSymbol('}', { write: true });
         this.writeConstructTagAndDedent("whileStatement");
     }
     compileDo(): void {
