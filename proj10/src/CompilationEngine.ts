@@ -349,8 +349,7 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.advanceInput();
         this.expectSymbol('(', { write: true });
         this.advanceInput();
-        this.writeToken();  // expression
-        this.advanceInput();
+        this.compileExpression();
         this.expectSymbol(')', { write: true });
         this.advanceInput();
         this.expectSymbol('{', { write: true });
@@ -445,7 +444,7 @@ export default class CompilationEngine implements I_CompilationEngine {
         this.writeConstructTagAndDedent("term");
     }
     compileExpressionList(): number {
-        this.writeConstructTagAndIndent("expression list");
+        this.writeConstructTagAndIndent("expressionList");
         let count = 0;
         if (this.input.tokenType() !== TokenType.SYMBOL) {
 
