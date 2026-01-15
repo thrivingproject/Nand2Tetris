@@ -447,9 +447,18 @@ export default class CompilationEngine implements I_CompilationEngine {
                 );
                 this.advanceInput();
                 break;
-            case TokenType.INT_CONST:
-            case TokenType.STRING_CONST:
-            case TokenType.IDENTIFIER:  // subroutineCall, varName
+            case TokenType.SYMBOL:
+                // Need to handle `unaryOp term` and `'(' expression ')'`
+                this.expectSymbol(['(', '~', '-'], { write: true });
+                const symbol = this.input.symbol();
+                this.advanceInput();
+                if (symbol === '(') {
+                    this.compileExpression();
+                    this.expectSymbol(')', { write: true });
+                    this.advanceInput();
+                } else this.compileTerm();
+                break;
+            default:
                 this.writeToken();
                 this.advanceInput();
                 // Need to handle subroutineCalls and varName[expression] terms
@@ -475,19 +484,6 @@ export default class CompilationEngine implements I_CompilationEngine {
                         this.advanceInput();
                     } // No else clause since any symbol could exist here
                 }
-                break;
-            case TokenType.SYMBOL:
-                // Need to handle `unaryOp term` and `'(' expression ')'`
-                this.expectSymbol(['(', '~', '-'], { write: true });
-                const symbol = this.input.symbol();
-                this.advanceInput();
-                if (symbol === '(') {
-                    this.compileExpression();
-                    this.expectSymbol(')', { write: true });
-                    this.advanceInput();
-                } else this.compileTerm();
-                break;
-            default:
                 break;
         }
         this.writeConstructTagAndDedent("term");
