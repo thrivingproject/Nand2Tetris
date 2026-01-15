@@ -18,8 +18,9 @@ npm i && npx tsc
 To compile all `.jack` files in a directory or a single `.jack` file:
 
 ```sh
+# From project root
 node dist/JackAnalyzer.js source
 ```
 
-Where `source` is the path to a directory that contains one ore more Jack files
-or the path to a single Jack file.
+Where `source` is the path to a directory that contains one or more Jack files
+or the path to a single Jack file. Path should be relative to project root.
