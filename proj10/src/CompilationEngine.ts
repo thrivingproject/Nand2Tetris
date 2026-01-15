@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import type { I_CompilationEngine } from "./interfaces.js";
 import type JackTokenizer from "./JackTokenizer.js";
-import { Keyword, TokenType, statementKeywords } from './enums.js';
+import { Keyword, TokenType, statementKeywords, ops } from './enums.js';
 
 /**
  * Gets its input from a JackTokenizer, and emits its output to an output file,

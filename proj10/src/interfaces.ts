@@ -124,7 +124,7 @@ export interface I_CompilationEngine {
     /**
      * Compiles an expression:
      * 
-     * term (op term)*
+     * `term (op term)*`
      */
     compileExpression(): void;
     /**
@@ -134,9 +134,9 @@ export interface I_CompilationEngine {
      * to distinguish between the possibilities. Any other token is not part of
      * this term and should not be advanced over:
      * 
-     * integerConstant | stringConstant | keywordConstant | varName | 
-     * varname'[' expression ']' | subroutineCall | '**(**' expression '**)**' | 
-     * unaryOp term
+     * `integerConstant | stringConstant | keywordConstant | varName | 
+     * varname'[' expression ']' | subroutineCall | '(' expression ')' | unaryOp
+     *  term`
      */
     compileTerm(): void;
     /**

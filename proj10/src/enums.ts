@@ -6,8 +6,11 @@ export const enum TokenType {
     STRING_CONST = "string constant"
 }
 
-export const symbols = ["{", "}", "(", ")", "[", "]", ".", ",", ";", "+", "-",
-    "*", "/", "&", "|", "<", ">", "=", "~"];
+export const ops = ["+", "-", "*", "/", "&", "|", "<", ">", "="];
+
+export const symbols = [
+    "{", "}", "(", ")", "[", "]", ".", ",", ";", ...ops, "~"
+];
 
 
 export const enum Keyword {
