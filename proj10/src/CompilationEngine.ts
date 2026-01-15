@@ -124,10 +124,9 @@ export default class CompilationEngine implements I_CompilationEngine {
                 (!isArr && expected !== symbol)
             ) {
                 throw new Error(
-                    `Expected keyword '${expected}', got '${symbol}'`
+                    `Expected symbol '${expected}', got '${symbol}'`
                 );
             }
-            throw new Error(`Expected symbol '${expected}', got '${symbol}'`);
         }
         if (write) this.writeToken();
     }
@@ -326,6 +325,7 @@ export default class CompilationEngine implements I_CompilationEngine {
             this.writeToken(); this.advanceInput();  // write the '['
             this.compileExpression();
             this.expectSymbol(']', { write: true });
+            this.advanceInput();
         }
         this.expectSymbol('=', { write: true });
         this.advanceInput();
@@ -388,7 +388,7 @@ export default class CompilationEngine implements I_CompilationEngine {
 
         // Expecting '.' or '(' since calls may or may not have a qualifier
         this.advanceInput();
-        this.expectSymbol();
+        this.expectSymbol(['.', '(']);
 
         // Needed to handle subroutine calls that include a qualifier
         if (this.input.symbol() === '.') {
@@ -426,22 +426,81 @@ export default class CompilationEngine implements I_CompilationEngine {
     compileExpression(): void {
         this.writeConstructTagAndIndent("expression");
         this.compileTerm();
+        // (op term)*
+        while (
+            this.input.tokenType() === TokenType.SYMBOL &&
+            ops.includes(this.input.symbol())
+        ) {
+            this.writeToken();
+            this.advanceInput();
+            this.compileTerm();
+        }
         this.writeConstructTagAndDedent("expression");
     }
     compileTerm(): void {
         this.writeConstructTagAndIndent("term");
-        this.writeToken();
-        this.advanceInput();
+        switch (this.input.tokenType()) {
+            case TokenType.KEYWORD:
+                this.expectKeyword(
+                    [Keyword.TRUE, Keyword.FALSE, Keyword.NULL, Keyword.THIS],
+                    { write: true }
+                );
+                this.advanceInput();
+                break;
+            case TokenType.INT_CONST:
+            case TokenType.STRING_CONST:
+            case TokenType.IDENTIFIER:  // subroutineCall, varName
+                this.writeToken();
+                this.advanceInput();
+                // Need to handle subroutineCalls and varName[expression] terms
+                if (this.input.tokenType() === TokenType.SYMBOL) {
+                    const symbol = this.input.symbol();
+                    if (symbol === '[') {                          // Array
+                        this.writeToken();
+                        this.advanceInput();
+                        this.compileExpression();
+                        this.expectSymbol(']', { write: true });
+                        this.advanceInput();
+                    } else if (['(', '.'].includes(symbol)) {      // Subroutine
+                        if (this.input.symbol() === '.') {
+                            this.writeToken();
+                            this.advanceInput();
+                            this.expectIdentifier({ write: true });
+                            this.advanceInput();
+                        }
+                        this.expectSymbol('(', { write: true });
+                        this.advanceInput();
+                        this.compileExpressionList();
+                        this.expectSymbol(')', { write: true });
+                        this.advanceInput();
+                    } // No else clause since any symbol could exist here
+                }
+                break;
+            case TokenType.SYMBOL:
+                // Need to handle `unaryOp term` and `'(' expression ')'`
+                this.expectSymbol(['(', '~', '-'], { write: true });
+                const symbol = this.input.symbol();
+                this.advanceInput();
+                if (symbol === '(') {
+                    this.compileExpression();
+                    this.expectSymbol(')', { write: true });
+                    this.advanceInput();
+                } else this.compileTerm();
+                break;
+            default:
+                break;
+        }
         this.writeConstructTagAndDedent("term");
     }
     compileExpressionList(): number {
         this.writeConstructTagAndIndent("expressionList");
         let count = 0;
-        if (this.input.tokenType() !== TokenType.SYMBOL) {
-
+        if (
+            this.input.tokenType() !== TokenType.SYMBOL ||
+            this.input.symbol() !== ')'
+        ) {
             this.compileExpression();
             count++;
-
             while (
                 this.input.tokenType() === TokenType.SYMBOL &&
                 this.input.symbol() === ','
